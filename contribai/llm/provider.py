@@ -95,11 +95,13 @@ class GeminiProvider(LLMProvider):
         system: str | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
+        model: str | None = None,
     ) -> str:
         from google.genai import types
 
         temp = temperature if temperature is not None else self.temperature
         max_tok = max_tokens if max_tokens is not None else self.max_tokens
+        use_model = model or self.model
 
         try:
             config = types.GenerateContentConfig(
@@ -108,7 +110,7 @@ class GeminiProvider(LLMProvider):
                 max_output_tokens=max_tok,
             )
             response = self._client.models.generate_content(
-                model=self.model,
+                model=use_model,
                 contents=prompt,
                 config=config,
             )
@@ -126,11 +128,13 @@ class GeminiProvider(LLMProvider):
         system: str | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
+        model: str | None = None,
     ) -> str:
         from google.genai import types
 
         temp = temperature if temperature is not None else self.temperature
         max_tok = max_tokens if max_tokens is not None else self.max_tokens
+        use_model = model or self.model
 
         try:
             contents = []
@@ -144,7 +148,7 @@ class GeminiProvider(LLMProvider):
                 max_output_tokens=max_tok,
             )
             response = self._client.models.generate_content(
-                model=self.model,
+                model=use_model,
                 contents=contents,
                 config=config,
             )
@@ -322,6 +326,108 @@ class OllamaProvider(LLMProvider):
         await self._client.aclose()
 
 
+# ── Multi-Model Wrapper ────────────────────────────────────────────────────────
+
+
+class MultiModelProvider(LLMProvider):
+    """Wraps a Gemini provider with task-aware model routing.
+
+    Automatically selects the best model for each task type
+    based on the configured routing strategy.
+    """
+
+    def __init__(self, config: LLMConfig, strategy: str = "balanced"):
+        super().__init__(config)
+        from contribai.llm.models import TaskType
+        from contribai.llm.router import TaskRouter
+
+        self._inner = GeminiProvider(config)
+        self._router = TaskRouter(strategy=strategy)
+        self._task_type = TaskType.ANALYSIS  # current task context
+        self._call_log: list[dict] = []
+
+    def set_task(self, task_type) -> None:
+        """Set the current task context for model routing."""
+        self._task_type = task_type
+
+    async def complete(
+        self,
+        prompt: str,
+        *,
+        system: str | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+        model: str | None = None,
+    ) -> str:
+        if model is None:
+            decision = self._router.route(
+                self._task_type,
+                complexity=min(len(prompt) // 500, 10),
+            )
+            model = decision.model.name
+            logger.info(
+                "🧠 [%s] → %s (%s)",
+                self._task_type.value,
+                decision.model.display_name,
+                decision.reason,
+            )
+            self._call_log.append(
+                {
+                    "task": self._task_type.value,
+                    "model": model,
+                    "reason": decision.reason,
+                }
+            )
+        return await self._inner.complete(
+            prompt,
+            system=system,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            model=model,
+        )
+
+    async def chat(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        system: str | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+        model: str | None = None,
+    ) -> str:
+        if model is None:
+            decision = self._router.route(
+                self._task_type,
+                complexity=5,
+            )
+            model = decision.model.name
+            logger.info(
+                "🧠 [%s] → %s (%s)",
+                self._task_type.value,
+                decision.model.display_name,
+                decision.reason,
+            )
+        return await self._inner.chat(
+            messages,
+            system=system,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            model=model,
+        )
+
+    async def close(self):
+        await self._inner.close()
+
+    @property
+    def routing_log(self) -> list[dict]:
+        """Get the log of routing decisions."""
+        return self._call_log
+
+    @property
+    def routing_stats(self) -> dict:
+        return self._router.stats
+
+
 # ── Factory ────────────────────────────────────────────────────────────────────
 
 
@@ -333,12 +439,36 @@ _PROVIDERS: dict[str, type[LLMProvider]] = {
 }
 
 
-def create_llm_provider(config: LLMConfig) -> LLMProvider:
-    """Create an LLM provider instance from config."""
+def create_llm_provider(
+    config: LLMConfig,
+    multi_model: bool = False,
+    strategy: str = "balanced",
+) -> LLMProvider:
+    """Create an LLM provider instance from config.
+
+    Args:
+        config: LLM configuration
+        multi_model: If True and provider is Gemini, wrap with
+                     MultiModelProvider for per-task model routing
+        strategy: Routing strategy (performance/balanced/economy)
+    """
     provider_cls = _PROVIDERS.get(config.provider)
     if not provider_cls:
         raise LLMError(
             f"Unknown LLM provider: {config.provider}. Available: {', '.join(_PROVIDERS.keys())}"
         )
-    logger.info("Using LLM provider: %s (model: %s)", config.provider, config.model)
+
+    if multi_model and config.provider == "gemini":
+        logger.info(
+            "Using multi-model routing (strategy=%s, default=%s)",
+            strategy,
+            config.model,
+        )
+        return MultiModelProvider(config, strategy=strategy)
+
+    logger.info(
+        "Using LLM provider: %s (model: %s)",
+        config.provider,
+        config.model,
+    )
     return provider_cls(config)

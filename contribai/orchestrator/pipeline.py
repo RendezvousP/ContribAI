@@ -55,8 +55,13 @@ class ContribPipeline:
 
     async def _init_components(self):
         """Initialize all pipeline components."""
-        # LLM
-        self._llm = create_llm_provider(self.config.llm)
+        # LLM — with optional multi-model routing
+        mm = self.config.multi_model
+        self._llm = create_llm_provider(
+            self.config.llm,
+            multi_model=mm.enabled,
+            strategy=mm.strategy,
+        )
 
         # GitHub
         self._github = GitHubClient(
@@ -252,8 +257,9 @@ class ContribPipeline:
         logger.info("=" * 60)
         logger.info("📦 Processing: %s", repo.full_name)
 
-        # Analyze
+        # Analyze — set task context for model routing
         logger.info("🔬 Analyzing code...")
+        self._set_task("analysis")
         analysis = await self._analyzer.analyze(repo)
         result.findings_total = len(analysis.findings)
 
@@ -299,6 +305,7 @@ class ContribPipeline:
         # Generate contributions for top findings
         for finding in analysis.top_findings[:max_prs]:
             logger.info("🛠️ Generating fix for: %s", finding.title)
+            self._set_task("code_gen")
             contribution = await self._generator.generate(finding, context)
 
             if not contribution:
@@ -334,3 +341,15 @@ class ContribPipeline:
 
         result.repos_analyzed = 1
         return result
+
+    def _set_task(self, task_name: str) -> None:
+        """Set the current task context for multi-model routing."""
+        from contribai.llm.provider import MultiModelProvider
+
+        if isinstance(self._llm, MultiModelProvider):
+            import contextlib
+
+            from contribai.llm.models import TaskType
+
+            with contextlib.suppress(ValueError):
+                self._llm.set_task(TaskType(task_name))

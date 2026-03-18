@@ -85,3 +85,8 @@ quota:
   github_daily_limit: 5000
   llm_daily_limit: 1000
   llm_daily_tokens: 1000000
+
+# Multi-model routing - auto-selects best model per task
+multi_model:
+  enabled: false                     # true to enable smart model routing
+  strategy: "balanced"               # performance | balanced | economy
