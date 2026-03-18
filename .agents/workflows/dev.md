@@ -81,3 +81,30 @@ git push origin <branch-name>
 
 12. **Create Pull Request**
 Open PR on GitHub with the PR template, request review from Code Reviewer agent.
+
+## Patch Release Convention
+
+After committing small fixes or improvements directly to `main` (without a feature branch), do a **patch release** to keep versions trackable:
+
+### When to Patch Release (0.x.Z)
+- Bug fixes (search/replace, checkbox ticking, etc.)
+- Small improvements (auto-issue creation, compliance loop)
+- Documentation fixes
+- Config changes
+
+### When to Minor Release (0.Y.0)
+- New major features (multi-model routing, repo guidelines compliance)
+- New commands or CLI options
+- New analyzers or generators
+
+### Quick Patch Release Steps
+1. Bump version in `contribai/__init__.py`: `__version__ = "0.x.Z"`
+2. Commit: `git commit -am "chore: release v0.x.Z"`
+3. Tag: `git tag -a v0.x.Z -m "Release v0.x.Z"`
+4. Push: `git push origin main --tags`
+
+### Rule of Thumb
+- **1-3 fix commits** since last release → patch release
+- **Major feature complete** → minor release
+- Accumulating too many unreleased commits is bad — release often!
+
