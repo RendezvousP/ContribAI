@@ -165,6 +165,16 @@ class Memory:
         row = await cursor.fetchone()
         return row[0] if row else 0
 
+    async def get_repo_prs(self, repo: str) -> list[dict]:
+        """Get all PRs previously submitted for a specific repo."""
+        cursor = await self._db.execute(
+            "SELECT * FROM submitted_prs WHERE repo = ? ORDER BY created_at DESC",
+            (repo,),
+        )
+        rows = await cursor.fetchall()
+        cols = [d[0] for d in cursor.description]
+        return [dict(zip(cols, row, strict=False)) for row in rows]
+
     # ── Run Log ────────────────────────────────────────────────────────────
 
     async def start_run(self) -> int:

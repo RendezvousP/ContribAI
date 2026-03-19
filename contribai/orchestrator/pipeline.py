@@ -29,6 +29,21 @@ from contribai.pr.manager import PRManager
 logger = logging.getLogger(__name__)
 
 
+def _titles_similar(title_a: str, title_b: str) -> bool:
+    """Check if two finding/PR titles are similar enough to be duplicates.
+
+    Uses keyword overlap: if >50% of significant words match, consider similar.
+    """
+    stop_words = {"a", "an", "the", "in", "on", "of", "for", "to", "and", "or", "is"}
+    words_a = {w for w in title_a.lower().split() if w not in stop_words and len(w) > 2}
+    words_b = {w for w in title_b.lower().split() if w not in stop_words and len(w) > 2}
+    if not words_a or not words_b:
+        return False
+    overlap = len(words_a & words_b)
+    smaller = min(len(words_a), len(words_b))
+    return overlap / smaller > 0.5
+
+
 @dataclass
 class PipelineResult:
     """Result of a pipeline run."""
@@ -321,10 +336,49 @@ class ContribPipeline:
             relevant_files=relevant_files,
         )
 
+        # Filter out findings that overlap with previously submitted PRs
+        past_prs = await self._memory.get_repo_prs(repo.full_name)
+        if past_prs:
+            past_files = set()
+            past_titles_lower = set()
+            for pr in past_prs:
+                # Extract file paths from PR titles/branches
+                past_titles_lower.add(pr.get("title", "").lower())
+                # Branch names contain the finding topic
+                branch = pr.get("branch", "")
+                if branch:
+                    past_files.add(branch)
+
+            original_count = len(analysis.top_findings[:max_prs])
+            filtered_findings = []
+            for finding in analysis.top_findings[:max_prs]:
+                # Check if this finding's file was already targeted by a past PR
+                title_lower = finding.title.lower()
+                is_dup = any(_titles_similar(title_lower, pt) for pt in past_titles_lower)
+                if is_dup:
+                    logger.info(
+                        "⏭️ Skipping duplicate finding: %s (similar PR exists)",
+                        finding.title,
+                    )
+                    continue
+                filtered_findings.append(finding)
+
+            if len(filtered_findings) < original_count:
+                logger.info(
+                    "🔁 Filtered %d duplicate findings (%d remaining)",
+                    original_count - len(filtered_findings),
+                    len(filtered_findings),
+                )
+        else:
+            filtered_findings = list(analysis.top_findings[:max_prs])
+
+        if not filtered_findings:
+            logger.info("No new findings after duplicate filter")
+            result.repos_analyzed = 1
+            return result
+
         # Validate findings against full file content to filter false positives
-        validated_findings = await self._validate_findings(
-            analysis.top_findings[:max_prs], relevant_files
-        )
+        validated_findings = await self._validate_findings(filtered_findings, relevant_files)
         logger.info(
             "🔎 Validated %d/%d findings (filtered %d false positives)",
             len(validated_findings),
@@ -562,6 +616,10 @@ class ContribPipeline:
                     repo.name,
                     pr_result.pr_number,
                     comment=comment,
+                )
+                # Record closed status in memory
+                await self._memory.update_pr_status(
+                    repo.full_name, pr_result.pr_number, "ci_failed"
                 )
                 return
 
