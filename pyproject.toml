@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "contribai"
-version = "0.7.0"
+version = "2.0.0"
 description = "AI Agent that automatically contributes to open source projects on GitHub"
 readme = "README.md"
 license = { text = "MIT" }
@@ -64,6 +64,30 @@ select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "RUF"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["contribai"]
+omit = [
+    "contribai/web/*",
+    "contribai/scheduler/*",
+    "contribai/plugins/*",
+    "contribai/templates/*",
+    "contribai/notifications/*",
+    "contribai/cli/tui.py",
+    "contribai/core/leaderboard.py",
+    "contribai/core/profiles.py",
+    "contribai/core/quotas.py",
+    "contribai/llm/agents.py",
+    "contribai/llm/models.py",
+    "contribai/llm/router.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__",
+    "if TYPE_CHECKING",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["contribai"]

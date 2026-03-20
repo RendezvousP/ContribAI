@@ -125,5 +125,9 @@ def mock_github():
     client.check_rate_limit = AsyncMock(
         return_value={"remaining": 4999, "limit": 5000, "reset": 9999999}
     )
+    client.list_issues = AsyncMock(return_value=[])
+    client.get_issue_comments = AsyncMock(return_value=[])
+    client.get_issue_timeline = AsyncMock(return_value=[])
+    client.list_pull_requests = AsyncMock(return_value=[])
     client.close = AsyncMock()
     return client
