@@ -28,6 +28,20 @@ class PRManager:
             self._user = await self._github.get_authenticated_user()
         return self._user
 
+    def _build_signoff(self, user: dict) -> str | None:
+        """Build DCO Signed-off-by string from user info.
+
+        Returns ``"Name <email>"`` or ``None`` if info is missing.
+        """
+        name = user.get("name") or user.get("login", "")
+        email = user.get("email")
+        if not email:
+            # GitHub noreply fallback
+            uid = user.get("id", "")
+            login = user.get("login", "")
+            email = f"{uid}+{login}@users.noreply.github.com"
+        return f"{name} <{email}>" if name else None
+
     async def create_pr(
         self,
         contribution: Contribution,
@@ -54,6 +68,7 @@ class PRManager:
         """
         user = await self._get_user()
         username = user["login"]
+        signoff = self._build_signoff(user)
 
         try:
             # 1. Fork
@@ -90,6 +105,7 @@ class PRManager:
                     contribution.commit_message,
                     branch,
                     sha=sha,
+                    signoff=signoff,
                 )
 
             # 3b. Create linked issue if repo likely requires it

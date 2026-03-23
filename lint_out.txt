@@ -1,0 +1,23 @@
+﻿SIM118 Use `key in dict` instead of `key in dict.keys()`
+  --> tests\unit\test_github_client.py:65:50
+   |
+63 |     def test_auth_header(self, client):
+64 |         headers = client._client.headers
+65 |         assert "authorization" in {k.lower() for k in headers.keys()}
+   |                                                  ^^^^^^^^^^^^^^^^^^^
+   |
+help: Remove `.keys()`
+
+E501 Line too long (181 > 100)
+  --> tests\unit\test_scorer.py:36:101
+   |
+34 | ΓÇª
+35 | ΓÇª
+36 | ΓÇª    cursor = db.execute('SELECT * FROM users WHERE id = ?', (user_id,))\n    return cursor.fetchall()\n""",
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+37 | ΓÇª
+38 | ΓÇª
+   |
+
+Found 2 errors.
+No fixes available (1 hidden fix can be enabled with the `--unsafe-fixes` option).

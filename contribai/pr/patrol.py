@@ -62,6 +62,16 @@ class PRPatrol:
             self._user = await self._github.get_authenticated_user()
         return self._user
 
+    def _build_signoff(self, user: dict) -> str | None:
+        """Build DCO Signed-off-by string from user info."""
+        name = user.get("name") or user.get("login", "")
+        email = user.get("email")
+        if not email:
+            uid = user.get("id", "")
+            login = user.get("login", "")
+            email = f"{uid}+{login}@users.noreply.github.com"
+        return f"{name} <{email}>" if name else None
+
     async def patrol(
         self,
         pr_records: list[dict],
@@ -548,6 +558,8 @@ class PRPatrol:
                 sha = None
 
             # Push fix
+            user = await self._get_user()
+            signoff = self._build_signoff(user)
             commit_msg = f"fix: address review feedback — {feedback.body[:60]}"
             await self._github.create_or_update_file(
                 fork_owner,
@@ -557,6 +569,7 @@ class PRPatrol:
                 commit_msg,
                 branch,
                 sha=sha,
+                signoff=signoff,
             )
             logger.info("  ✅ Pushed fix for %s: %s", file_path, feedback.body[:60])
 

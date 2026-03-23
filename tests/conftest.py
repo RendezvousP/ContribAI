@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -22,7 +22,6 @@ from contribai.core.models import (
     Repository,
     Severity,
 )
-
 
 # ── Config Fixtures ────────────────────────────────────────────────────────
 

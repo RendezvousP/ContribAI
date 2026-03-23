@@ -1,0 +1,119 @@
+﻿8e3ab6b1 Update Azure datasource description to be more generic (#1834)
+## Summary
+Updated the Azure datasource catalog entry to use a more generic
+description that better reflects the breadth of Azure services
+supported.
+
+## Changes
+- Changed Azure datasource description from a specific list of services
+("Activity Logs, AKS, NSGs, VNets, Key Vault, Storage, Cost analysis")
+to a more inclusive statement ("Any Azure Service")
+
+## Details
+This change makes the catalog entry more maintainable by avoiding the
+need to update the description each time new Azure services are added to
+the integration. The generic description better represents the flexible
+nature of the Azure MCP datasource.
+
+https://claude.ai/code/session_01JQ5kY5vw4mBe8hChp1ABDV
+
+Signed-off-by: Claude <noreply@anthropic.com>
+Co-authored-by: Claude <noreply@anthropic.com>
+Signed-off-by: minhvu2212 <tangminhvu2212@gmail.com>
+
+80a06abb fix mismatch namespace (#1833)
+Signed-off-by: Tomer Keshet <tomer@robusta.dev>
+Signed-off-by: minhvu2212 <tangminhvu2212@gmail.com>
+
+757a3e39 Added support for HTTP Basic Auth to servicenow tables toolset (#1820)
+- Added username and password to the servicenow tables toolset config
+- Added model validation for the auth method
+- Used HTTPBasicAuth in GET requests to servicenow
+- Added tests for the servicenow tables config validations
+- Mentioned basic auth method in the servicenow toolset docs
+
+<!-- This is an auto-generated comment: release notes by coderabbit.ai
+-->
+## Summary by CodeRabbit
+
+* **New Features**
+* ServiceNow integration now supports HTTP Basic auth as an alternative
+to API-key auth and enforces validation at startup (either API key or
+both username+password, not both).
+
+* **Documentation**
+* Updated ServiceNow docs with an "Authentication Options" section and
+example configuration snippets for both methods.
+
+* **Tests**
+* Added tests validating authentication selection and error conditions.
+<!-- end of auto-generated comment: release notes by coderabbit.ai -->
+
+---------
+
+Signed-off-by: Jamess11 <dor_siryon@hotmail.com>
+Co-authored-by: Roi Glinik <groi.tech@gmail.com>
+Signed-off-by: minhvu2212 <tangminhvu2212@gmail.com>
+
+4273315c Document tool result size limits and filesystem storage (#1805)
+## Summary
+This PR adds comprehensive documentation for HolmesGPT's tool result
+size limiting and filesystem storage features, explaining how the system
+handles large tool responses that exceed the LLM context window.
+
+## Key Changes
+- **New environment variables section** in
+`docs/reference/environment-variables.md`:
+- `HOLMES_TOOL_RESULT_STORAGE_ENABLED`: Controls whether large results
+are saved to disk (default: `true`)
+- `HOLMES_TOOL_RESULT_STORAGE_PATH`: Configurable directory for storing
+large results (default: `/tmp/.holmes`)
+- `TOOL_MAX_ALLOCATED_CONTEXT_WINDOW_PCT`: Percentage-based limit for
+tool responses (default: `15%`)
+- `TOOL_MAX_ALLOCATED_CONTEXT_WINDOW_TOKENS`: Absolute token limit for
+tool responses (default: `25000`)
+
+- **Updated bash toolset documentation** in
+`docs/data-sources/builtin-toolsets/bash.md`:
+  - Explains how large tool results are automatically saved to disk
+- Documents that bash toolset allows read-only commands (`cat`, `head`,
+`tail`, `wc`, `jq`) on the storage directory
+- Added reference table for the two most relevant storage configuration
+variables
+  - Cross-references the full environment variables documentation
+
+## Notable Details
+- The documentation clarifies the fallback behavior: when
+`HOLMES_TOOL_RESULT_STORAGE_ENABLED` is disabled, oversized results are
+dropped and the LLM is asked to retry with a narrower query
+- Explains that the effective limit is the **minimum** of the
+percentage-based and absolute token limits
+- Includes practical examples for each configuration option
+- Emphasizes that storage directories are automatically cleaned up per
+session
+
+https://claude.ai/code/session_015wCUUuc1NZnwmzWvvYrrcZ
+
+<!-- This is an auto-generated comment: release notes by coderabbit.ai
+-->
+
+## Summary by CodeRabbit
+
+## Release Notes
+
+* **Documentation**
+* Added documentation for tool result storage feature with new
+environment variables to manage large tool outputs
+* Included guidance on automatic disk storage behavior when tool results
+exceed context window limits
+* Documented configuration variables with defaults and usage examples
+for controlling storage behavior
+
+<!-- end of auto-generated comment: release notes by coderabbit.ai -->
+
+---------
+
+Signed-off-by: Claude <noreply@anthropic.com>
+Co-authored-by: Claude <noreply@anthropic.com>
+Signed-off-by: minhvu2212 <tangminhvu2212@gmail.com>
+

@@ -20,6 +20,7 @@ class GitHubConfig(BaseModel):
     max_repos_per_run: int = 5
     max_prs_per_day: int = 10
     rate_limit_buffer: int = 100
+    dco_signoff: bool = True  # Auto-append Signed-off-by to commit messages
 
     @model_validator(mode="after")
     def resolve_token(self):

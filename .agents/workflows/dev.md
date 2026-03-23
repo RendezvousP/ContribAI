@@ -1,110 +1,103 @@
 ---
-description: Development workflow – code, lint, test, commit cycle for implementing features and fixes
+description: ContribAI development workflow - code, patrol, hunt, and release
 ---
 
-# Development Workflow
+# ContribAI Development Workflow
 
-## Steps
+// turbo-all
 
-1. **Pull latest changes**
-// turbo
+## Code Changes
+
+1. Make changes to the relevant files in `contribai/`
+2. Run formatting and linting:
+   ```bash
+   ruff format contribai/ tests/
+   ruff check contribai/ tests/ --fix
+   ```
+3. Run tests:
+   ```bash
+   pytest tests/ -q --tb=short --cov=contribai --cov-fail-under=50
+   ```
+4. Commit with conventional commits:
+   ```bash
+   git add -A && git commit -m "feat|fix|refactor: description"
+   ```
+5. Push and verify CI:
+   ```bash
+   git push origin main
+   ```
+
+## PR Patrol
+
+Run patrol to monitor and respond to PR review feedback:
+
 ```bash
-git pull origin main
+# Dry run (no changes)
+contribai patrol --dry-run
+
+# Target specific PR
+contribai patrol --pr <PR_NUMBER>
+
+# Live run (responds to feedback)
+contribai patrol
 ```
 
-2. **Create feature branch**
-```bash
-git checkout -b <type>/<short-description>
-```
-Types: `feat/`, `fix/`, `refactor/`, `docs/`, `perf/`, `test/`, `chore/`
+### Key files:
+- `contribai/pr/patrol.py` - Patrol engine
+- `contribai/core/models.py` - FeedbackItem, PatrolResult, FeedbackAction
+- `contribai/github/client.py` - GitHub API (create_or_update_file, get_assigned_issues)
+- `contribai/cli/main.py` - CLI patrol command
 
-3. **Write code changes**
-Follow the Backend Developer agent standards:
-- Async-first for I/O
-- Type hints on all public APIs
-- Pydantic models for data
-- Custom exceptions from `contribai.core.exceptions`
-- Logging via `logging.getLogger(__name__)`
+### DCO Signoff
+All commits via GitHub API automatically include `Signed-off-by:` trailer.
+Configured via `github.dco_signoff: true` in `config.yaml`.
 
-4. **Write tests alongside code**
+If a repo requires DCO and existing commits lack signoff:
 ```bash
-# Create test file in tests/unit/ matching the module
-# e.g., contribai/analysis/analyzer.py → tests/unit/test_analyzer.py
+git rebase HEAD~N --signoff
+git push --force-with-lease origin <branch>
 ```
 
-5. **Run lint**
-// turbo
+### Bot Review Context
+When a maintainer replies to a bot review (Coderabbit, etc.), patrol reads the bot's
+original analysis via `in_reply_to_id` and passes it as context to the LLM for
+generating accurate code fixes.
+
+## Hunt Mode
+
 ```bash
-ruff check contribai/ --fix
+# Hunt for repos and generate PRs
+contribai hunt --rounds 1 --repos 20
+
+# Dry run
+contribai hunt --rounds 1 --repos 5 --dry-run
 ```
 
-6. **Run format**
-// turbo
-```bash
-ruff format contribai/ tests/
+## Release
+
+1. Bump version in `contribai/__init__.py` and `pyproject.toml`
+2. Update `CHANGELOG.md` with new version section
+3. Commit and push
+4. Create release:
+   ```bash
+   gh release create v<VERSION> --repo tang-vu/ContribAI --title "v<VERSION> - Title" --generate-notes
+   ```
+5. Verify all CI checks pass
+
+## Config Reference
+
+Key config fields in `config.yaml`:
+
+```yaml
+github:
+  dco_signoff: true          # Auto Signed-off-by (default: true)
+  max_repos_per_run: 5
+  max_prs_per_day: 10
+
+llm:
+  provider: gemini
+  model: gemini-2.5-flash
+
+contribution:
+  commit_convention: conventional
 ```
-
-7. **Run tests**
-// turbo
-```bash
-pytest tests/ -v --tb=short
-```
-
-8. **Check coverage**
-// turbo
-```bash
-pytest tests/ --cov=contribai --cov-report=term-missing
-```
-
-9. **Stage changes**
-```bash
-git add -A
-```
-
-10. **Commit with conventional message**
-```bash
-git commit -m "<type>: <short description>"
-```
-Format: `type: description` where type is one of:
-- `feat` – New feature
-- `fix` – Bug fix
-- `refactor` – Code restructuring
-- `docs` – Documentation
-- `test` – Tests
-- `perf` – Performance improvement
-- `chore` – Maintenance
-
-11. **Push to remote**
-```bash
-git push origin <branch-name>
-```
-
-12. **Create Pull Request**
-Open PR on GitHub with the PR template, request review from Code Reviewer agent.
-
-## Patch Release Convention
-
-After committing small fixes or improvements directly to `main` (without a feature branch), do a **patch release** to keep versions trackable:
-
-### When to Patch Release (0.x.Z)
-- Bug fixes (search/replace, checkbox ticking, etc.)
-- Small improvements (auto-issue creation, compliance loop)
-- Documentation fixes
-- Config changes
-
-### When to Minor Release (0.Y.0)
-- New major features (multi-model routing, repo guidelines compliance)
-- New commands or CLI options
-- New analyzers or generators
-
-### Quick Patch Release Steps
-1. Bump version in `contribai/__init__.py`: `__version__ = "0.x.Z"`
-2. Commit: `git commit -am "chore: release v0.x.Z"`
-3. Tag: `git tag -a v0.x.Z -m "Release v0.x.Z"`
-4. Push: `git push origin main --tags`
-
-### Rule of Thumb
-- **1-3 fix commits** since last release → patch release
-- **Major feature complete** → minor release
-- Accumulating too many unreleased commits is bad — release often!
-

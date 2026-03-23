@@ -1,15 +1,16 @@
 """Tests for LLM provider factory and mock interactions."""
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from contribai.core.config import LLMConfig
 from contribai.core.exceptions import LLMError
 from contribai.llm.provider import (
-    GeminiProvider,
-    OpenAIProvider,
     AnthropicProvider,
+    GeminiProvider,
     OllamaProvider,
+    OpenAIProvider,
     create_llm_provider,
 )
 

@@ -1,7 +1,8 @@
 """Tests for the PR manager."""
 
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 
 from contribai.core.models import (
     Contribution,

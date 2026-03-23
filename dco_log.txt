@@ -1,0 +1,6 @@
+﻿8e3ab6b1 Update Azure datasource description to be more generic (#1834)
+80a06abb fix mismatch namespace (#1833)
+757a3e39 Added support for HTTP Basic Auth to servicenow tables toolset (#1820)
+4273315c Document tool result size limits and filesystem storage (#1805)
+55aea243 Improved interactive mode (#1771)
+2b7e41a9 Replace per-toolset fast_model injection with class-level default (#1825)

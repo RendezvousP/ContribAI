@@ -1,8 +1,7 @@
 """Tests for LLM context management."""
 
-import pytest
 
-from contribai.core.models import FileNode, RepoContext, Repository
+from contribai.core.models import FileNode, RepoContext
 from contribai.llm.context import (
     ContextBudget,
     build_repo_context_prompt,

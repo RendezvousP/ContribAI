@@ -1,12 +1,10 @@
 """Tests for GitHub API client."""
 
+from unittest.mock import AsyncMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
-import httpx
-
-from contribai.core.exceptions import GitHubAPIError, RateLimitError
-from contribai.core.models import Repository
+from contribai.core.exceptions import GitHubAPIError
 from contribai.github.client import GitHubClient
 
 

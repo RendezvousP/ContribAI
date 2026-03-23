@@ -6,8 +6,8 @@ ContribAI discovers open source repositories, analyzes them for improvement oppo
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-213%20passed-brightgreen)](#)
-[![Version](https://img.shields.io/badge/version-2.0.0-blue)](#)
+[![Tests](https://img.shields.io/badge/tests-247%20passed-brightgreen)](#)
+[![Version](https://img.shields.io/badge/version-2.3.0-blue)](#)
 
 ---
 
@@ -44,6 +44,16 @@ ContribAI discovers open source repositories, analyzes them for improvement oppo
 - **Code-only modifications** – Skips `.md`, `.yaml`, `.json`, `.toml` and meta files (LICENSE, CONTRIBUTING.md)
 - **Fork cleanup** – `contribai cleanup` removes stale forks with no open PRs
 - **Parallel hunt** – Process up to 10 repos concurrently with configurable semaphore
+
+### PR Patrol (v2.2.0+)
+- **Review monitoring** – Scans open PRs for maintainer feedback and auto-responds
+- **Bot context awareness** – Reads bot review analysis (Coderabbit, etc.) when maintainers reference them
+- **Smart classification** – LLM classifies feedback as CODE_CHANGE, QUESTION, STYLE_FIX, APPROVE, REJECT
+- **Auto code fix** – Generates and pushes fixes via GitHub API based on review feedback
+- **Rate limit retry** – Exponential backoff (5s/10s/20s) for rate limited API calls
+- **Assigned issue detection** – Scans repos for issues assigned to the user
+- **DCO auto-signoff** – Automatically appends `Signed-off-by` to all commits
+- **Bot filtering** – Filters 11+ known review bots to avoid false feedback classification
 
 ### Multi-Model Agent (v0.7.0+)
 - **Task routing** – Routes analysis/generation/review to different models

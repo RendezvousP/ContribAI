@@ -4,10 +4,10 @@ import pytest
 
 from contribai.analysis.strategies import (
     DjangoStrategy,
-    FlaskStrategy,
-    FastAPIStrategy,
-    ReactStrategy,
     ExpressStrategy,
+    FastAPIStrategy,
+    FlaskStrategy,
+    ReactStrategy,
     detect_frameworks,
 )
 from contribai.core.models import FileNode, RepoContext, Repository

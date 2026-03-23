@@ -1,7 +1,8 @@
 """Integration test: full pipeline dry run with mocked externals."""
 
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from contribai.core.config import ContribAIConfig, GitHubConfig, LLMConfig, StorageConfig
 from contribai.core.models import (

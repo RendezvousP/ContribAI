@@ -1,7 +1,8 @@
 """Tests for repository discovery engine."""
 
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 
 from contribai.core.config import DiscoveryConfig
 from contribai.core.models import DiscoveryCriteria, Repository

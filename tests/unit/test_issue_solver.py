@@ -4,11 +4,12 @@ Tests for v2.0.0 issue-driven mode: fetch_solvable_issues,
 solve_issue_deep, multi-file parsing, linked PR detection.
 """
 
-import pytest
 from unittest.mock import AsyncMock
 
-from contribai.core.models import Issue, Repository, RepoContext, FileNode, ContributionType
-from contribai.issues.solver import IssueSolver, IssueCategory
+import pytest
+
+from contribai.core.models import ContributionType, FileNode, Issue, RepoContext
+from contribai.issues.solver import IssueCategory, IssueSolver
 
 
 @pytest.fixture

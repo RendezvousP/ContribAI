@@ -1,9 +1,8 @@
 """Tests for retry utilities and LRU cache."""
 
-import pytest
-from unittest.mock import AsyncMock
 
-from contribai.core.exceptions import GitHubAPIError, LLMError, RateLimitError
+import pytest
+
 from contribai.core.retry import LRUCache, async_retry
 
 

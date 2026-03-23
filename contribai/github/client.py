@@ -247,8 +247,19 @@ class GitHubClient:
         message: str,
         branch: str,
         sha: str | None = None,
+        signoff: str | None = None,
     ) -> dict:
-        """Create or update a file in the repository."""
+        """Create or update a file in the repository.
+
+        Args:
+            signoff: If provided, appends ``Signed-off-by: <signoff>`` to the
+                     commit message for DCO compliance.  Value should be
+                     ``"Name <email>"``.
+        """
+        # Append DCO signoff trailer if requested
+        if signoff and "Signed-off-by:" not in message:
+            message = f"{message}\n\nSigned-off-by: {signoff}"
+
         encoded = base64.b64encode(content.encode("utf-8")).decode("utf-8")
         payload: dict[str, Any] = {
             "message": message,

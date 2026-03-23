@@ -1,7 +1,8 @@
 """Tests for the contribution generator."""
 
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 
 from contribai.core.config import ContributionConfig
 from contribai.core.models import (
@@ -10,7 +11,6 @@ from contribai.core.models import (
     FileChange,
     Finding,
     RepoContext,
-    Repository,
     Severity,
 )
 from contribai.generator.engine import ContributionGenerator

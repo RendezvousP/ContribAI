@@ -1,16 +1,15 @@
 """Tests for the code analysis engine."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock
 
-from contribai.analysis.analyzer import CodeAnalyzer, ANALYZABLE_EXTENSIONS
+import pytest
+
+from contribai.analysis.analyzer import ANALYZABLE_EXTENSIONS, CodeAnalyzer
 from contribai.core.config import AnalysisConfig
 from contribai.core.models import (
     ContributionType,
     FileNode,
     Finding,
     RepoContext,
-    Repository,
     Severity,
 )
 
