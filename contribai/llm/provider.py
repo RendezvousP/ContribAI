@@ -11,6 +11,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 from contribai.core.exceptions import LLMError, LLMRateLimitError
+from contribai.core.retry import rate_limit_retry
 
 if TYPE_CHECKING:
     from contribai.core.config import LLMConfig
@@ -88,6 +89,7 @@ class GeminiProvider(LLMProvider):
         except ImportError as e:
             raise LLMError("google-genai package not installed") from e
 
+    @rate_limit_retry
     async def complete(
         self,
         prompt: str,
@@ -121,6 +123,7 @@ class GeminiProvider(LLMProvider):
                 raise LLMRateLimitError(f"Gemini rate limit: {e}") from e
             raise LLMError(f"Gemini error: {e}") from e
 
+    @rate_limit_retry
     async def chat(
         self,
         messages: list[dict[str, str]],

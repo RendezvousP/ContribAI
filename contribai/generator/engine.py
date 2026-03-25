@@ -29,9 +29,10 @@ logger = logging.getLogger(__name__)
 class ContributionGenerator:
     """Generate code contributions from analysis findings."""
 
-    def __init__(self, llm: LLMProvider, config: ContributionConfig):
+    def __init__(self, llm: LLMProvider, config: ContributionConfig, *, memory=None):
         self._llm = llm
         self._config = config
+        self._memory = memory  # Optional Memory for repo_preferences
 
     async def generate(
         self,
@@ -51,7 +52,8 @@ class ContributionGenerator:
         """
         try:
             # 1 & 2: Generate the fix
-            prompt = self._build_generation_prompt(finding, context)
+            repo_prefs = await self._get_repo_preferences(context)
+            prompt = self._build_generation_prompt(finding, context, repo_prefs=repo_prefs)
             system = self._build_system_prompt(context)
 
             response = await self._llm.complete(prompt, system=system, temperature=0.2)
@@ -97,6 +99,20 @@ class ContributionGenerator:
             logger.error("Failed to generate contribution for %s: %s", finding.title, e)
             return None
 
+    async def _get_repo_preferences(self, context: RepoContext) -> dict | None:
+        """Query memory for learned repo preferences.
+
+        Returns dict with preferred_types, rejected_types, merge_rate
+        or None if no memory or no data for this repo.
+        """
+        if not self._memory:
+            return None
+        try:
+            return await self._memory.get_repo_preferences(context.full_name)
+        except Exception as e:
+            logger.debug("Could not fetch repo preferences: %s", e)
+            return None
+
     def _build_system_prompt(self, context: RepoContext) -> str:
         """Build system prompt with repository context and style awareness."""
         repo_context = build_repo_context_prompt(context, max_tokens=4000)
@@ -135,7 +151,9 @@ class ContributionGenerator:
             f"REPOSITORY CONTEXT:\n{repo_context}"
         )
 
-    def _build_generation_prompt(self, finding: Finding, context: RepoContext) -> str:
+    def _build_generation_prompt(
+        self, finding: Finding, context: RepoContext, *, repo_prefs: dict | None = None
+    ) -> str:
         """Build the generation prompt based on finding type."""
         # Get the current file content if available
         current_content = context.relevant_files.get(finding.file_path, "")
@@ -180,6 +198,24 @@ class ContributionGenerator:
             f"- **File**: {finding.file_path}\n"
             f"- **Description**: {finding.description}\n"
         )
+
+        # Inject repo preferences from outcome learning
+        if repo_prefs:
+            prefs_section = "\n## Repo Preferences (learned from past PRs)\n"
+            if repo_prefs.get("rejected_types"):
+                prefs_section += (
+                    f"- **Avoid these PR types** (historically rejected): "
+                    f"{', '.join(repo_prefs['rejected_types'])}\n"
+                )
+            if repo_prefs.get("preferred_types"):
+                prefs_section += (
+                    f"- **Preferred PR types** (historically merged): "
+                    f"{', '.join(repo_prefs['preferred_types'])}\n"
+                )
+            if repo_prefs.get("merge_rate") is not None:
+                rate = repo_prefs["merge_rate"]
+                prefs_section += f"- **Merge rate**: {rate:.0%}\n"
+            prompt += prefs_section
 
         if finding.suggestion:
             prompt += f"- **Suggestion**: {finding.suggestion}\n"

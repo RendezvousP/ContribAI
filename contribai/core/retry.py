@@ -95,10 +95,26 @@ def github_retry(func: Callable):
 def llm_retry(func: Callable):
     """Retry decorator optimized for LLM API calls."""
     return async_retry(
-        max_retries=2,
+        max_retries=3,
         base_delay=3.0,
-        max_delay=30.0,
+        max_delay=60.0,
         retryable_exceptions=(LLMError, LLMRateLimitError),
+        non_retryable_exceptions=(),
+    )(func)
+
+
+def rate_limit_retry(func: Callable):
+    """Retry decorator specifically for 429 rate limit errors.
+
+    Uses longer delays (10s base, 120s max, 5 retries) because
+    Gemini rate limits can last 30-60 seconds during heavy usage.
+    """
+    return async_retry(
+        max_retries=5,
+        base_delay=10.0,
+        max_delay=120.0,
+        backoff_factor=2.0,
+        retryable_exceptions=(LLMRateLimitError,),
         non_retryable_exceptions=(),
     )(func)
 

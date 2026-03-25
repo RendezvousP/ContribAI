@@ -1,6 +1,6 @@
 # Architecture
 
-ContribAI v2.4.0 — DeerFlow-inspired agent architecture.
+ContribAI v2.4.1 — DeerFlow-inspired agent architecture.
 
 ## System Overview
 
@@ -191,3 +191,15 @@ contribution:  # PR style, commit format
 pipeline:      # Concurrent repos, retry settings
 multi_model:   # Task routing strategy
 ```
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `AttributeError: 'Finding' has no attribute 'contribution_type'` | `Finding` uses `.type`, `Contribution` uses `.contribution_type` | Use `finding.type` for Finding objects |
+| `429 RESOURCE_EXHAUSTED` during hunt | Gemini API rate limit (multi-round hunts) | `rate_limit_retry` (v2.4.1) auto-retries 5x with 10-120s backoff |
+| Hunt returns 0 repos after first run | Memory dedup filters already-analyzed repos | Delete `~/.contribai/memory.db` or wait for new repos |
+| `gh release create` hangs in PowerShell | Backticks in `--notes` confuse PS parser | Use `--notes-file /tmp/notes.md` instead |
+| Coverage drops below 50% | New modules added without tests | Add tests in `tests/unit/test_<module>.py` |
+| Rich output invisible when piped | Rich buffers to file | Check file size to confirm progress |
+
