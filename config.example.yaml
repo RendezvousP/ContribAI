@@ -25,6 +25,7 @@ analysis:
     - docs
     - ui_ux
   severity_threshold: "medium"  # low | medium | high | critical
+  max_context_tokens: 30000     # token budget for context compression
   max_file_size_kb: 500
   skip_patterns:
     - "*.min.js"
@@ -90,3 +91,9 @@ quota:
 multi_model:
   enabled: false                     # true to enable smart model routing
   strategy: "balanced"               # performance | balanced | economy
+
+# Sandbox execution - validates generated code before PR
+sandbox:
+  enabled: false                     # true to use Docker sandbox (requires Docker)
+  timeout: 30                        # max seconds per code execution
+  image: "python:3.11-slim"          # Docker image for sandbox

@@ -1,6 +1,6 @@
 # Architecture
 
-ContribAI v2.6.0 — DeerFlow-inspired agent architecture with MCP server.
+ContribAI v2.8.0 — DeerFlow/AgentScope-inspired agent architecture.
 
 ## System Overview
 
@@ -33,7 +33,13 @@ ContribAI v2.6.0 — DeerFlow-inspired agent architecture with MCP server.
             │  analyzed_repos │ submitted_prs           │
             │  pr_outcomes    │ repo_preferences        │
             │  findings_cache │ run_log                 │
+            │  working_memory │ (auto-load/save, TTL)   │
             └─────────────────────────────────────────┘
+                    │                       │
+            ┌───────▼────┐         ┌────────▼────────┐
+            │ EventBus   │         │ ContextCompressor│
+            │ (15 events)│         │ (LLM + truncate) │
+            └────────────┘         └─────────────────┘
 ```
 
 ## Module Map

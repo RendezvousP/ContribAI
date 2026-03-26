@@ -6,8 +6,8 @@ ContribAI discovers open source repositories, analyzes them for improvement oppo
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-370%2B%20passed-brightgreen)](#)
-[![Version](https://img.shields.io/badge/version-2.6.0-blue)](#)
+[![Tests](https://img.shields.io/badge/tests-400%2B%20passed-brightgreen)](#)
+[![Version](https://img.shields.io/badge/version-2.8.0-blue)](#)
 
 ---
 
@@ -60,6 +60,13 @@ ContribAI discovers open source repositories, analyzes them for improvement oppo
 - **Safety** – check_duplicate_pr, check_ai_policy
 - **Maintenance** – patrol_prs, cleanup_forks, get_stats
 - **Resource safe** – Proper cleanup on shutdown, fork delete guard
+
+### Agent Architecture (v2.7.0-v2.8.0)
+- **Context Compression** – LLM-driven structured summarization + truncation-based compression (30k token budget)
+- **Working Memory** – Auto-load/save per-repo analysis context with 72h TTL
+- **Event Bus** – 15 typed events with async subscribers and JSONL file logging
+- **Sandbox Execution** – Docker-based code validation with local `ast.parse` fallback
+- **Inspired by** – AgentScope, DeerFlow, SWE-agent, OpenHands
 
 ### Multi-Model Agent (v0.7.0+)
 - **Task routing** – Routes analysis/generation/review to different models

@@ -23,10 +23,10 @@ It is itself an AI agent that operates on other GitHub repositories.
 | GitHub | REST API v3 (via httpx) |
 | Web | FastAPI + uvicorn |
 | CLI | Typer + Rich |
-| Tests | pytest (370+ tests) |
+| Tests | pytest (400+ tests) |
 | Lint | ruff |
 
-## Architecture (v2.6.0)
+## Architecture (v2.8.0)
 
 ### Core Pipeline
 ```
@@ -39,8 +39,11 @@ Discovery → Middleware Chain → Analysis → Generation → PR → CI Monitor
 3. **Sub-Agent Registry** — 5 agents with parallel execution (`contribai/agents/registry.py`)
 4. **Tool Protocol** — MCP-inspired tool interface (`contribai/tools/protocol.py`)
 5. **Outcome Learning** — Tracks PR outcomes to learn per-repo preferences (`contribai/orchestrator/memory.py`)
-6. **Context Summarization** — Compresses analysis results for LLM context (`contribai/analysis/analyzer.py`)
+6. **Context Compression** — LLM-driven + truncation-based context compression (`contribai/analysis/context_compressor.py`)
 7. **MCP Server** — 14 tools exposed via stdio for Claude Desktop (`contribai/mcp_server.py`)
+8. **Event Bus** — 15 typed events with async subscribers and JSONL logging (`contribai/core/events.py`)
+9. **Working Memory** — Auto-load/save context per repo with TTL (`contribai/orchestrator/memory.py`)
+10. **Sandbox** — Docker-based code validation with local fallback (`contribai/sandbox/sandbox.py`)
 
 ### Module Dependency Graph
 ```
@@ -57,9 +60,12 @@ cli/main.py
         ├── pr/manager.py (PR lifecycle)
         ├── pr/patrol.py (review monitoring)
         ├── issues/solver.py (issue solving)
-        ├── orchestrator/memory.py (SQLite persistence)
+        ├── orchestrator/memory.py (SQLite + working_memory)
         ├── agents/registry.py (sub-agent orchestration)
         ├── tools/protocol.py (tool interface)
+        ├── analysis/context_compressor.py (LLM compression)
+        ├── core/events.py (event bus + JSONL logger)
+        ├── sandbox/sandbox.py (Docker + ast.parse)
         └── mcp_server.py (MCP stdio server, 14 tools)
 ```
 
@@ -102,11 +108,15 @@ config.analysis.enabled_analyzers  # list[str]
 
 ### Memory/Persistence
 ```python
-# SQLite via aiosqlite
+# SQLite via aiosqlite — outcome learning + working memory
 memory = Memory("~/.contribai/memory.db")
 await memory.init()
 await memory.record_outcome(repo, pr_number, url, type, "merged")
 prefs = await memory.get_repo_preferences(repo)
+
+# Working memory — auto-load/save per-repo context (72h TTL)
+await memory.store_context(repo, "analysis_summary", summary, ttl_hours=72)
+cached = await memory.get_context(repo, "analysis_summary")
 ```
 
 ## File Organization Rules
@@ -119,7 +129,7 @@ prefs = await memory.get_repo_preferences(repo)
 ## Testing
 
 ```bash
-pytest tests/ -v                  # 333 tests
+pytest tests/ -v                  # 400+ tests
 pytest tests/ -v --cov=contribai  # With coverage (threshold: 50%)
 ```
 
@@ -148,8 +158,8 @@ tests/
 
 ## Known Limitations
 
-1. No sandbox execution — ContribAI generates code but doesn't run it
+1. Sandbox execution is opt-in (`sandbox.enabled = True`) — defaults to local `ast.parse` fallback
 2. Single-repo PRs only — no cross-repo changes
 3. No interactive mode — fully autonomous
 4. Rate limited by GitHub API (5000 req/hour for authenticated users)
-5. Context window limited by LLM provider (varies by model)
+5. Context window managed by `ContextCompressor` (default 30k tokens)
