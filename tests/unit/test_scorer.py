@@ -33,7 +33,13 @@ def good_contribution():
         changes=[
             FileChange(
                 path="db.py",
-                new_content="""import sqlite3\n\ndef query(db, user_id):\n    cursor = db.execute('SELECT * FROM users WHERE id = ?', (user_id,))\n    return cursor.fetchall()\n""",
+                new_content=(
+                    "import sqlite3\n\n"
+                    "def query(db, user_id):\n"
+                    "    cursor = db.execute("
+                    "'SELECT * FROM users WHERE id = ?', (user_id,))\n"
+                    "    return cursor.fetchall()\n"
+                ),
             )
         ],
         commit_message="fix(security): parameterize sql queries to prevent injection",

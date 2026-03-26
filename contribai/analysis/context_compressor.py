@@ -174,9 +174,8 @@ class ContextCompressor:
             is_import = stripped.startswith(("import ", "from "))
             is_def = re.match(r"^(class |def |async def )", stripped)
             is_decorator = stripped.startswith("@")
-            is_constant = (
-                re.match(r"^[A-Z_][A-Z_0-9]+ =", stripped)
-                and not line.startswith((" ", "\t"))
+            is_constant = re.match(r"^[A-Z_][A-Z_0-9]+ =", stripped) and not line.startswith(
+                (" ", "\t")
             )
             if is_import or is_def or is_decorator or is_constant:
                 result.append(line)
