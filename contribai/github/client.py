@@ -536,6 +536,14 @@ class GitHubClient:
         )
         logger.info("Closed PR #%d on %s/%s", pr_number, owner, repo)
 
+    async def list_user_forks(self) -> list[dict]:
+        """List all forks owned by the authenticated user."""
+        return await self._get("/user/repos", params={"type": "fork", "per_page": "100"})
+
+    async def delete_repository(self, owner: str, repo: str) -> None:
+        """Delete a repository (must be owner or have admin access)."""
+        await self._delete(f"/repos/{owner}/{repo}")
+
     @staticmethod
     def _parse_repo(data: dict) -> Repository:
         """Parse raw API response into Repository model."""

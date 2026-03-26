@@ -115,3 +115,49 @@ class TestGetFileContentRef:
             )
             result = await client.get_file_content("owner", "repo", "file.py")
         assert result == "world"
+
+
+class TestListUserForks:
+    @pytest.mark.asyncio
+    async def test_returns_fork_list(self, client):
+        forks_data = [
+            {"full_name": "me/forked-repo", "fork": True},
+            {"full_name": "me/other-fork", "fork": True},
+        ]
+        with respx.mock:
+            respx.get(
+                "https://api.github.com/user/repos",
+                params={"type": "fork", "per_page": "100"},
+            ).mock(return_value=httpx.Response(200, json=forks_data))
+            result = await client.list_user_forks()
+        assert len(result) == 2
+        assert result[0]["full_name"] == "me/forked-repo"
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_list_when_no_forks(self, client):
+        with respx.mock:
+            respx.get(
+                "https://api.github.com/user/repos",
+                params={"type": "fork", "per_page": "100"},
+            ).mock(return_value=httpx.Response(200, json=[]))
+            result = await client.list_user_forks()
+        assert result == []
+
+
+class TestDeleteRepository:
+    @pytest.mark.asyncio
+    async def test_delete_success(self, client):
+        with respx.mock:
+            respx.delete(
+                "https://api.github.com/repos/me/forked-repo"
+            ).mock(return_value=httpx.Response(204))
+            await client.delete_repository("me", "forked-repo")  # Should not raise
+
+    @pytest.mark.asyncio
+    async def test_delete_raises_on_error(self, client):
+        with respx.mock:
+            respx.delete(
+                "https://api.github.com/repos/me/missing"
+            ).mock(return_value=httpx.Response(404, json={"message": "Not Found"}))
+            with pytest.raises(GitHubAPIError):
+                await client.delete_repository("me", "missing")
