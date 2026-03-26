@@ -305,7 +305,7 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
         return _err(str(e))
 
 
-# ── Tool implementations (stubs — filled in subsequent tasks) ──────────────────
+# ── Tool implementations ───────────────────────────────────────────────────────
 
 
 async def _search_repos(args: dict) -> list[types.TextContent]:
@@ -470,8 +470,12 @@ async def _check_ai_policy(args: dict) -> list[types.TextContent]:
             lower = content.lower()
             banned = any(kw in lower for kw in _AI_BAN_KEYWORDS)
             return _ok(banned=banned, reason=path if banned else None)
-        except GitHubAPIError:
-            continue
+        except GitHubAPIError as e:
+            # Only skip 404 (file not found); re-raise rate limits, auth errors, etc.
+            status = getattr(e, "status", None) or getattr(e, "status_code", None)
+            if status == 404:
+                continue
+            raise
     return _ok(banned=False, reason=None)
 
 
@@ -569,6 +573,11 @@ async def _cleanup_forks(args: dict) -> list[types.TextContent]:
         for fork_name in forks_to_delete:
             try:
                 owner, repo_name = fork_name.split("/", 1)
+                # Safety: verify this is actually a fork before deleting
+                repo_info = await gh._get(f"/repos/{owner}/{repo_name}")
+                if not repo_info.get("fork", False):
+                    logger.warning("Skipping %s — not a fork, refusing to delete", fork_name)
+                    continue
                 await gh.delete_repository(owner, repo_name)
                 logger.info("Deleted fork %s", fork_name)
             except Exception as e:
@@ -581,8 +590,25 @@ async def _cleanup_forks(args: dict) -> list[types.TextContent]:
 
 
 async def main():
-    async with stdio_server() as (read_stream, write_stream):
-        await server.run(read_stream, write_stream, server.create_initialization_options())
+    """Start MCP stdio server with proper resource cleanup."""
+    try:
+        async with stdio_server() as (read_stream, write_stream):
+            await server.run(read_stream, write_stream, server.create_initialization_options())
+    finally:
+        # Clean up shared clients to avoid resource leaks
+        global _github, _memory
+        if _github is not None:
+            try:
+                await _github.close()
+            except Exception:
+                logger.debug("Error closing GitHubClient", exc_info=True)
+            _github = None
+        if _memory is not None:
+            try:
+                await _memory.close()
+            except Exception:
+                logger.debug("Error closing Memory", exc_info=True)
+            _memory = None
 
 
 if __name__ == "__main__":
