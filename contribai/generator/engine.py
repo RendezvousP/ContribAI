@@ -7,6 +7,7 @@ follow the target repository's coding conventions.
 
 from __future__ import annotations
 
+import difflib
 import json
 import logging
 import re
@@ -51,22 +52,51 @@ class ContributionGenerator:
         5. Self-review the generated code
         """
         try:
-            # 1 & 2: Generate the fix
+            # 1 & 2: Generate the fix (with retry on failure)
             repo_prefs = await self._get_repo_preferences(context)
             prompt = self._build_generation_prompt(finding, context, repo_prefs=repo_prefs)
             system = self._build_system_prompt(context)
 
-            response = await self._llm.complete(prompt, system=system, temperature=0.2)
+            changes = None
+            last_error = ""
+            for attempt in range(2):  # max 1 retry
+                if attempt > 0:
+                    logger.info(
+                        "Retrying generation (attempt %d) for: %s", attempt + 1, finding.title
+                    )
+                    retry_hint = (
+                        f"\n\n## IMPORTANT: Your previous attempt failed.\n"
+                        f"Error: {last_error}\n"
+                        f"Please fix the issue and return ONLY valid JSON "
+                        f"with no markdown fences or extra text.\n"
+                    )
+                    prompt_with_hint = prompt + retry_hint
+                else:
+                    prompt_with_hint = prompt
 
-            # 3: Parse output → apply search/replace to original content
-            changes = self._parse_changes(response, context)
+                response = await self._llm.complete(
+                    prompt_with_hint, system=system, temperature=0.2
+                )
+
+                # 3: Parse output → apply search/replace to original content
+                changes = self._parse_changes(response, context)
+                if not changes:
+                    last_error = "No valid changes could be parsed from your JSON output"
+                    continue
+
+                # 3b: Validate generated code (syntax sanity check)
+                if not self._validate_changes(changes):
+                    last_error = (
+                        "Generated code failed syntax validation"
+                        " (unbalanced brackets or empty edits)"
+                    )
+                    changes = None
+                    continue
+
+                break  # Success
+
             if not changes:
-                logger.warning("No valid changes parsed for finding: %s", finding.title)
-                return None
-
-            # 3b: Validate generated code (syntax sanity check)
-            if not self._validate_changes(changes):
-                logger.warning("Code validation failed for: %s", finding.title)
+                logger.warning("No valid changes after retries for finding: %s", finding.title)
                 return None
 
             # 4: Generate commit message
@@ -305,7 +335,7 @@ class ContributionGenerator:
         Quick checks before expensive self-review:
         - Non-empty edits/content
         - No-op detection (search == replace)
-        - Balanced brackets for common languages
+        - Balanced brackets for common languages (string/comment-aware)
 
         Returns True if changes pass validation.
         """
@@ -335,25 +365,72 @@ class ContributionGenerator:
                     logger.debug("Validation: replace identical to search (no-op)")
                     return False
 
-            # Balanced bracket check on generated code
+            # Balanced bracket check — skip brackets inside strings and comments
             code_text = change.get("content", "") or "".join(e.get("replace", "") for e in edits)
             if code_text:
-                pairs = {"(": ")", "[": "]", "{": "}"}
-                stack = []
-                for ch in code_text:
-                    if ch in pairs:
-                        stack.append(pairs[ch])
-                    elif ch in pairs.values():
-                        if not stack or stack[-1] != ch:
-                            logger.debug("Validation: unbalanced brackets in generated code")
-                            return False
-                        stack.pop()
-                # Only fail if severely unbalanced (>5 unclosed)
-                if len(stack) > 5:
-                    logger.debug("Validation: %d unclosed brackets", len(stack))
+                unbalanced = self._count_unbalanced_brackets(code_text)
+                if unbalanced > 5:
+                    logger.debug("Validation: %d unbalanced brackets", unbalanced)
                     return False
 
         return True
+
+    @staticmethod
+    def _count_unbalanced_brackets(code: str) -> int:
+        """Count unbalanced brackets, ignoring those inside strings and comments."""
+        pairs = {"(": ")", "[": "]", "{": "}"}
+        closers = set(pairs.values())
+        stack: list[str] = []
+        in_string: str | None = None  # tracks quote character
+        in_line_comment = False
+        prev_ch = ""
+
+        for ch in code:
+            # Handle newlines — reset line comment
+            if ch == "\n":
+                in_line_comment = False
+                prev_ch = ch
+                continue
+
+            # Skip chars inside line comments
+            if in_line_comment:
+                prev_ch = ch
+                continue
+
+            # Detect line comment start (# for Python, // for others)
+            if ch == "#" and not in_string:
+                in_line_comment = True
+                prev_ch = ch
+                continue
+            if ch == "/" and prev_ch == "/" and not in_string:
+                in_line_comment = True
+                prev_ch = ch
+                continue
+
+            # Handle string boundaries
+            if ch in ('"', "'") and prev_ch != "\\":
+                if in_string is None:
+                    in_string = ch
+                elif in_string == ch:
+                    in_string = None
+                prev_ch = ch
+                continue
+
+            # Skip chars inside strings
+            if in_string:
+                prev_ch = ch
+                continue
+
+            # Count brackets
+            if ch in pairs:
+                stack.append(pairs[ch])
+            elif ch in closers:
+                if stack and stack[-1] == ch:
+                    stack.pop()
+
+            prev_ch = ch
+
+        return len(stack)
 
     def _find_cross_file_instances(self, finding: Finding, context: RepoContext) -> dict[str, str]:
         """Find other files in the repo with the same issue pattern.
@@ -420,17 +497,10 @@ class ContributionGenerator:
         changes: list[FileChange] = []
 
         try:
-            # Try to extract JSON from the response
-            json_match = re.search(r"```json\s*\n(.*?)\n\s*```", response, re.DOTALL)
-            if json_match:
-                json_text = json_match.group(1)
-            else:
-                # Try to find raw JSON
-                json_match = re.search(r"\{[\s\S]*\"changes\"[\s\S]*\}", response)
-                if json_match:
-                    json_text = json_match.group(0)
-                else:
-                    return []
+            # Robust JSON extraction with multiple strategies
+            json_text = self._extract_json(response)
+            if not json_text:
+                return []
 
             data = json.loads(json_text)
             raw_changes = data.get("changes", [])
@@ -502,11 +572,18 @@ class ContributionGenerator:
                                     path,
                                 )
 
+                        # Try 4: difflib fuzzy match (ratio > 0.8)
+                        if not matched and len(search) > 20:
+                            matched = self._fuzzy_replace(new_content, search, replace)
+                            if matched:
+                                new_content = matched
+                                logger.debug("Fuzzy match (difflib) for %s", path)
+
                         if matched:
                             edits_applied += 1
                         else:
                             logger.warning(
-                                "Search text not found in %s (tried exact + fuzzy). "
+                                "Search text not found in %s (tried exact + 3 fuzzy). "
                                 "Search[:%d]: %.80s...",
                                 path,
                                 len(search),
@@ -655,11 +732,28 @@ class ContributionGenerator:
             "Review the following code contribution for quality:\n\n"
             f"**Title**: {contribution.title}\n"
             f"**Type**: {contribution.contribution_type.value}\n"
+            f"**Finding**: {contribution.finding.description}\n"
             f"**Changes**:\n{changes_summary}\n\n"
             "For each changed file:\n"
         )
         for change in contribution.changes[:5]:
-            prompt += f"\n### {change.path}\n```\n{change.new_content[:2000]}\n```\n"
+            # Show diff-style context: include original vs new for better judgement
+            original = context.relevant_files.get(change.path, "")
+            if original and not change.is_new_file:
+                # Show unified diff instead of full content
+                diff_lines = list(
+                    difflib.unified_diff(
+                        original.splitlines(keepends=True)[:100],
+                        change.new_content.splitlines(keepends=True)[:100],
+                        fromfile=f"a/{change.path}",
+                        tofile=f"b/{change.path}",
+                        n=3,
+                    )
+                )
+                diff_text = "".join(diff_lines)[:4000]
+                prompt += f"\n### {change.path} (diff)\n```diff\n{diff_text}\n```\n"
+            else:
+                prompt += f"\n### {change.path}\n```\n{change.new_content[:4000]}\n```\n"
 
         prompt += (
             "\nAnswer these questions:\n"
@@ -679,3 +773,83 @@ class ContributionGenerator:
         except Exception as e:
             logger.warning("Self-review failed, approving by default: %s", e)
             return True  # Don't block on review failures
+
+    @staticmethod
+    def _extract_json(response: str) -> str | None:
+        """Robustly extract JSON from LLM response.
+
+        Tries multiple strategies to handle common LLM quirks:
+        1. Extract from ```json fences
+        2. Find raw JSON with "changes" key
+        3. Strip trailing text after valid JSON
+        """
+        # Strategy 1: ```json blocks
+        json_match = re.search(r"```json\s*\n(.*?)\n\s*```", response, re.DOTALL)
+        if json_match:
+            return json_match.group(1).strip()
+
+        # Strategy 2: ``` blocks (no language tag)
+        json_match = re.search(r"```\s*\n(\{.*?\})\n\s*```", response, re.DOTALL)
+        if json_match:
+            return json_match.group(1).strip()
+
+        # Strategy 3: Find raw JSON object with "changes" key
+        # Use a bracket-counting approach to find the complete JSON
+        start = response.find('{"changes"')
+        if start == -1:
+            start = response.find("{\n")
+        if start == -1:
+            return None
+
+        depth = 0
+        end = start
+        for i in range(start, len(response)):
+            if response[i] == "{":
+                depth += 1
+            elif response[i] == "}":
+                depth -= 1
+                if depth == 0:
+                    end = i + 1
+                    break
+
+        if depth == 0 and end > start:
+            return response[start:end]
+
+        return None
+
+    @staticmethod
+    def _fuzzy_replace(content: str, search: str, replace: str) -> str | None:
+        """Find the closest matching block in content using difflib.
+
+        Returns the modified content if a match with ratio > 0.8 is found,
+        otherwise returns None.
+        """
+        search_lines = search.splitlines()
+        content_lines = content.splitlines()
+        search_len = len(search_lines)
+
+        if search_len == 0 or search_len > len(content_lines):
+            return None
+
+        best_ratio = 0.0
+        best_start = -1
+
+        # Slide a window over content lines
+        for i in range(len(content_lines) - search_len + 1):
+            window = content_lines[i : i + search_len]
+            ratio = difflib.SequenceMatcher(
+                None, "\n".join(search_lines), "\n".join(window)
+            ).ratio()
+            if ratio > best_ratio:
+                best_ratio = ratio
+                best_start = i
+
+        if best_ratio >= 0.8 and best_start >= 0:
+            result_lines = (
+                content_lines[:best_start]
+                + replace.splitlines()
+                + content_lines[best_start + search_len :]
+            )
+            return "\n".join(result_lines)
+
+        return None
