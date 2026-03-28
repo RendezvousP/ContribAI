@@ -37,6 +37,20 @@ impl fmt::Display for ContributionType {
     }
 }
 
+impl ContributionType {
+    /// Map an analyzer name to its contribution type.
+    pub fn from_analyzer(name: &str) -> Self {
+        match name {
+            "security" | "django_security" | "flask_security" => Self::SecurityFix,
+            "performance" => Self::PerformanceOpt,
+            "docs" | "documentation" => Self::DocsImprove,
+            "ui_ux" => Self::UiUxFix,
+            "refactor" => Self::Refactor,
+            _ => Self::CodeQuality,
+        }
+    }
+}
+
 /// Severity level for findings.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]

@@ -1,3 +1,8 @@
 //! Code analysis engine with tree-sitter AST, triage, and PageRank.
 
-// TODO: Phase 4
+pub mod analyzer;
+pub mod ast_intel;
+pub mod compressor;
+pub mod repo_map;
+pub mod skills;
+pub mod triage;
