@@ -68,7 +68,18 @@ pub trait LlmProvider: Send + Sync {
 
 /// Fetch an access token from `gcloud auth print-access-token`.
 /// Used for Vertex AI authentication.
+///
+/// On Windows, gcloud is installed as `gcloud.cmd` (batch file) and cannot be
+/// spawned directly as a binary — we must use `cmd /c gcloud` instead.
 fn fetch_gcloud_token() -> Result<String> {
+    // On Windows, gcloud is a .cmd batch file; spawn via cmd.exe
+    #[cfg(target_os = "windows")]
+    let out = std::process::Command::new("cmd")
+        .args(["/c", "gcloud", "auth", "print-access-token"])
+        .output()
+        .map_err(|e| ContribError::Llm(format!("gcloud not found: {}", e)))?;
+
+    #[cfg(not(target_os = "windows"))]
     let out = std::process::Command::new("gcloud")
         .args(["auth", "print-access-token"])
         .output()
