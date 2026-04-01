@@ -12,10 +12,8 @@ pub struct TriageEngine;
 impl TriageEngine {
     /// Score and convert findings into prioritized remediation specs.
     pub fn triage(findings: Vec<Finding>) -> Vec<RemediationSpec> {
-        let mut specs: Vec<RemediationSpec> = findings
-            .into_iter()
-            .map(|f| Self::score_finding(f))
-            .collect();
+        let mut specs: Vec<RemediationSpec> =
+            findings.into_iter().map(Self::score_finding).collect();
 
         // Sort by priority score (lower = higher priority)
         specs.sort_by(|a, b| {

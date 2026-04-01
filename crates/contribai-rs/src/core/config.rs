@@ -29,7 +29,7 @@ impl Default for WebConfig {
 }
 
 /// Top-level configuration.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ContribAIConfig {
     #[serde(default)]
     pub github: GitHubConfig,
@@ -124,26 +124,6 @@ impl ContribAIConfig {
         if self.llm.vertex_project.is_empty() {
             self.llm.vertex_project =
                 std::env::var("GOOGLE_CLOUD_PROJECT").unwrap_or_else(|_| resolve_gcloud_project());
-        }
-    }
-}
-
-impl Default for ContribAIConfig {
-    fn default() -> Self {
-        Self {
-            github: GitHubConfig::default(),
-            llm: LlmConfig::default(),
-            analysis: AnalysisConfig::default(),
-            contribution: ContributionConfig::default(),
-            discovery: DiscoveryConfig::default(),
-            pipeline: PipelineConfig::default(),
-            storage: StorageConfig::default(),
-            multi_model: MultiModelConfig::default(),
-            scheduler: SchedulerConfig::default(),
-            quotas: QuotaConfig::default(),
-            notifications: NotificationConfig::default(),
-            sandbox: SandboxConfig::default(),
-            web: WebConfig::default(),
         }
     }
 }
@@ -589,7 +569,7 @@ impl Default for QuotaConfig {
 }
 
 /// Notification channel configuration.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct NotificationConfig {
     /// Slack incoming webhook URL.
     pub slack_webhook: Option<String>,
@@ -599,17 +579,6 @@ pub struct NotificationConfig {
     pub telegram_token: Option<String>,
     /// Telegram chat ID to send messages to.
     pub telegram_chat_id: Option<String>,
-}
-
-impl Default for NotificationConfig {
-    fn default() -> Self {
-        Self {
-            slack_webhook: None,
-            discord_webhook: None,
-            telegram_token: None,
-            telegram_chat_id: None,
-        }
-    }
 }
 
 /// Sandbox execution configuration.

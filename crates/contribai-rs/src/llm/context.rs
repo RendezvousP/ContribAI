@@ -64,6 +64,7 @@ pub fn truncate_to_tokens(text: &str, max_tokens: usize) -> String {
 /// Build a compact prompt summarizing repository context.
 ///
 /// Priority: README > file tree > contributing guide > relevant files > coding style.
+#[allow(clippy::too_many_arguments)]
 pub fn build_repo_context_prompt(
     repo_name: &str,
     language: &str,

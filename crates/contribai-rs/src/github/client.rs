@@ -340,7 +340,7 @@ impl GitHubClient {
 
         if data["encoding"].as_str() == Some("base64") {
             let content = data["content"].as_str().unwrap_or("");
-            let clean = content.replace('\n', "").replace('\r', "");
+            let clean = content.replace(['\n', '\r'], "");
             let decoded = base64::engine::general_purpose::STANDARD
                 .decode(&clean)
                 .map_err(|e| ContribError::GitHub(format!("Base64 decode error: {}", e)))?;
@@ -368,7 +368,7 @@ impl GitHubClient {
 
         let content = if data["encoding"].as_str() == Some("base64") {
             let raw = data["content"].as_str().unwrap_or("");
-            let clean = raw.replace('\n', "").replace('\r', "");
+            let clean = raw.replace(['\n', '\r'], "");
             let decoded = base64::engine::general_purpose::STANDARD
                 .decode(&clean)
                 .map_err(|e| ContribError::GitHub(format!("Base64 decode: {}", e)))?;
@@ -491,6 +491,7 @@ impl GitHubClient {
     // ── Commit & PR ────────────────────────────────────────────────────────
 
     /// Create or update a file in the repository.
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_or_update_file(
         &self,
         owner: &str,

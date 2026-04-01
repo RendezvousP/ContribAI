@@ -441,7 +441,7 @@ impl<'a> PrPatrol<'a> {
                 &feedback.body.chars().take(60).collect::<String>()
             );
 
-            let signoff = self.user.as_ref().and_then(|u| PrPatrol::build_signoff(u));
+            let signoff = self.user.as_ref().and_then(PrPatrol::build_signoff);
 
             match self
                 .github
@@ -549,7 +549,7 @@ impl<'a> PrPatrol<'a> {
         let text = response.trim();
         if text.starts_with("```") {
             let lines: Vec<&str> = text.lines().collect();
-            let end = if lines.last().map_or(false, |l| l.trim() == "```") {
+            let end = if lines.last().is_some_and(|l| l.trim() == "```") {
                 lines.len() - 1
             } else {
                 lines.len()

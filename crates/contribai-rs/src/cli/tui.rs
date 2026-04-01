@@ -75,6 +75,7 @@ struct PrRow {
     kind: String,
 }
 
+#[derive(Default)]
 struct Stats {
     total: i64,
     merged: i64,
@@ -83,24 +84,9 @@ struct Stats {
     repos_analyzed: i64,
 }
 
-impl Default for Stats {
-    fn default() -> Self {
-        Stats {
-            total: 0,
-            merged: 0,
-            closed: 0,
-            open: 0,
-            repos_analyzed: 0,
-        }
-    }
-}
-
 impl App {
     fn new(config: &ContribAIConfig) -> Self {
-        let (prs, repos, stats) = match load_data(config) {
-            Ok(v) => v,
-            Err(_) => (vec![], vec![], Stats::default()),
-        };
+        let (prs, repos, stats) = load_data(config).unwrap_or_default();
 
         let mut pr_state = TableState::default();
         if !prs.is_empty() {
@@ -574,7 +560,7 @@ fn render_prs(f: &mut Frame, area: Rect, app: &App) {
             )
             .bottom_margin(1),
     )
-    .highlight_style(
+    .row_highlight_style(
         Style::default()
             .bg(Color::DarkGray)
             .add_modifier(Modifier::BOLD),

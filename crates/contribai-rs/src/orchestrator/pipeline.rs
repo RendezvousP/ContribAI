@@ -409,27 +409,24 @@ impl<'a> ContribPipeline<'a> {
                 if self.memory.has_analyzed(&repo.full_name).unwrap_or(false) {
                     continue;
                 }
-                match self
+                if let Ok(prs) = self
                     .github
                     .list_pull_requests(&repo.owner, &repo.name, "closed", 10)
                     .await
                 {
-                    Ok(prs) => {
-                        let merged = prs
-                            .iter()
-                            .filter(|p| {
-                                p.get("merged_at")
-                                    .and_then(|v| v.as_str())
-                                    .map(|s| !s.is_empty())
-                                    .unwrap_or(false)
-                            })
-                            .count();
-                        if merged > 0 {
-                            info!(repo = %repo.full_name, merged, "✅ Merge-friendly target");
-                            targets.push(repo.clone());
-                        }
+                    let merged = prs
+                        .iter()
+                        .filter(|p| {
+                            p.get("merged_at")
+                                .and_then(|v| v.as_str())
+                                .map(|s| !s.is_empty())
+                                .unwrap_or(false)
+                        })
+                        .count();
+                    if merged > 0 {
+                        info!(repo = %repo.full_name, merged, "✅ Merge-friendly target");
+                        targets.push(repo.clone());
                     }
-                    Err(_) => {}
                 }
             }
 

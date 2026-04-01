@@ -22,7 +22,7 @@ pub struct CronSchedule {
 impl CronSchedule {
     /// Parse a 5-field cron expression.
     pub fn parse(cron_expr: &str) -> Result<Self, String> {
-        let parts: Vec<&str> = cron_expr.trim().split_whitespace().collect();
+        let parts: Vec<&str> = cron_expr.split_whitespace().collect();
         if parts.len() != 5 {
             return Err(format!(
                 "Invalid cron expression: {:?}. Expected 5 fields: minute hour day month day_of_week",

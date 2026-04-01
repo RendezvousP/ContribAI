@@ -38,6 +38,7 @@ use crate::orchestrator::memory::Memory;
 /// JSON-RPC request.
 #[derive(Debug, Deserialize)]
 struct JsonRpcRequest {
+    #[allow(dead_code)]
     jsonrpc: String,
     method: String,
     #[serde(default)]

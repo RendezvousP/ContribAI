@@ -87,8 +87,10 @@ impl fmt::Display for Severity {
 /// Status of a submitted pull request.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum PrStatus {
     Pending,
+    #[default]
     Open,
     Merged,
     Closed,
@@ -323,12 +325,6 @@ pub struct PrResult {
     pub branch_name: String,
     #[serde(default)]
     pub fork_full_name: String,
-}
-
-impl Default for PrStatus {
-    fn default() -> Self {
-        Self::Open
-    }
 }
 
 // ── Discovery Models ──────────────────────────────────────────────────────────

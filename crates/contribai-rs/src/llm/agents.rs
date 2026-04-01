@@ -49,6 +49,7 @@ const REVIEW_AGENT: Agent = Agent {
                     style consistency, and potential regressions. Be critical but constructive.",
 };
 
+#[allow(dead_code)]
 const DOCS_AGENT: Agent = Agent {
     name: "DocsWriter",
     task_type: TaskType::Docs,
@@ -56,6 +57,7 @@ const DOCS_AGENT: Agent = Agent {
                     Use proper formatting, examples, and follow the project's documentation style.",
 };
 
+#[allow(dead_code)]
 const PLANNER_AGENT: Agent = Agent {
     name: "Planner",
     task_type: TaskType::Planning,

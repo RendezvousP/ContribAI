@@ -57,6 +57,7 @@ fn category_to_contrib(cat: IssueCategory) -> ContributionType {
     }
 }
 
+#[allow(dead_code)]
 const SOLVABLE_LABELS: &[&str] = &[
     "good first issue",
     "good-first-issue",

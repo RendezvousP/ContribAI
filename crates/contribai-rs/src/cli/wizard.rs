@@ -362,40 +362,40 @@ pub fn write_wizard_config(result: &WizardResult) -> anyhow::Result<()> {
 fn apply_wizard_to_yaml(yaml: &str, result: &WizardResult) -> String {
     let mut lines: Vec<String> = yaml.lines().map(String::from).collect();
 
-    for i in 0..lines.len() {
-        let trimmed = lines[i].trim_start().to_string();
+    for line in &mut lines {
+        let trimmed = line.trim_start().to_string();
 
         // LLM provider
         if trimmed.starts_with("provider:") && (yaml.contains("\nllm:") || yaml.starts_with("llm:"))
         {
-            lines[i] = format!("  provider: \"{}\"", result.provider.provider_name());
+            *line = format!("  provider: \"{}\"", result.provider.provider_name());
         }
         // Model
         else if trimmed.starts_with("model:") {
-            lines[i] = format!("  model: \"{}\"", result.provider.default_model());
+            *line = format!("  model: \"{}\"", result.provider.default_model());
         }
         // API key
         else if trimmed.starts_with("api_key:") {
             let val = result.api_key.as_deref().unwrap_or("");
-            lines[i] = format!("  api_key: \"{}\"", val);
+            *line = format!("  api_key: \"{}\"", val);
         }
         // Vertex project
         else if trimmed.starts_with("vertex_project:") {
             let val = result.vertex_project.as_deref().unwrap_or("");
-            lines[i] = format!("  vertex_project: \"{}\"", val);
+            *line = format!("  vertex_project: \"{}\"", val);
         }
         // GitHub token
         else if trimmed.starts_with("token:") {
             let val = result.github_token.as_deref().unwrap_or("");
-            lines[i] = format!("  token: \"{}\"", val);
+            *line = format!("  token: \"{}\"", val);
         }
         // Max PRs
         else if trimmed.starts_with("max_prs_per_day:") {
-            lines[i] = format!("  max_prs_per_day: {}", result.max_prs_per_day);
+            *line = format!("  max_prs_per_day: {}", result.max_prs_per_day);
         }
         // Max repos
         else if trimmed.starts_with("max_repos_per_run:") {
-            lines[i] = format!("  max_repos_per_run: {}", result.max_repos_per_run);
+            *line = format!("  max_repos_per_run: {}", result.max_repos_per_run);
         }
     }
 

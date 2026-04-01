@@ -125,7 +125,7 @@ fn is_import_match(import_name: &str, file_path: &str) -> bool {
         .next()
         .unwrap_or(file_path)
         .rsplit('.')
-        .last()
+        .next_back()
         .unwrap_or("");
 
     let path_without_ext = file_path

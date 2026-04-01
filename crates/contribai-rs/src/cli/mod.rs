@@ -836,9 +836,8 @@ impl Cli {
             // ── Interactive / setup commands ───────────────────────────────────
             Commands::Init { output } => {
                 let out_path = output.as_deref();
-                match wizard::run_init_wizard(out_path.map(std::path::Path::new))? {
-                    Some(result) => wizard::write_wizard_config(&result)?,
-                    None => {} // user aborted
+                if let Some(result) = wizard::run_init_wizard(out_path.map(std::path::Path::new))? {
+                    wizard::write_wizard_config(&result)?;
                 }
                 Ok(())
             }
@@ -881,7 +880,7 @@ impl Cli {
 
             Commands::Interactive => {
                 let config = load_config(self.config.as_deref())?;
-                tui::run_interactive_tui(&config).map_err(|e| e.into())
+                tui::run_interactive_tui(&config)
             }
         }
     }
@@ -2105,6 +2104,7 @@ fn run_templates(type_filter: Option<&str>) -> anyhow::Result<()> {
 
 // ── Profile ───────────────────────────────────────────────────────────────────
 
+#[allow(dead_code)]
 struct Profile {
     name: &'static str,
     description: &'static str,
@@ -2470,30 +2470,25 @@ fn print_result(result: &contribai::orchestrator::pipeline::PipelineResult, dry_
     }
 
     println!(
-        "  {} Repos analyzed:         {}",
-        "📦",
+        "  📦 Repos analyzed:         {}",
         result.repos_analyzed.to_string().cyan()
     );
     println!(
-        "  {} Findings:               {}",
-        "🔍",
+        "  🔍 Findings:               {}",
         result.findings_total.to_string().cyan()
     );
     println!(
-        "  {} Contributions generated: {}",
-        "⚙️",
+        "  ⚙️ Contributions generated: {}",
         result.contributions_generated.to_string().cyan()
     );
     println!(
-        "  {} PRs created:            {}",
-        "🎉",
+        "  🎉 PRs created:            {}",
         result.prs_created.to_string().green().bold()
     );
 
     if !result.errors.is_empty() {
         println!(
-            "  {} Errors:                 {}",
-            "⚠️",
+            "  ⚠️ Errors:                 {}",
             result.errors.len().to_string().red()
         );
     }

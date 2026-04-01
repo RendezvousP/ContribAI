@@ -233,7 +233,7 @@ impl<'a> PrManager<'a> {
             PrStatus::Closed
         } else if data["requested_reviewers"]
             .as_array()
-            .map_or(false, |r| !r.is_empty())
+            .is_some_and(|r| !r.is_empty())
         {
             PrStatus::ReviewRequested
         } else {

@@ -146,10 +146,8 @@ impl ContributionGenerator<'_> {
             // Count brackets
             if let Some(&close) = open_to_close.get(&ch) {
                 stack.push(close);
-            } else if closers.contains(&ch) {
-                if stack.last() == Some(&ch) {
-                    stack.pop();
-                }
+            } else if closers.contains(&ch) && stack.last() == Some(&ch) {
+                stack.pop();
             }
 
             i += 1;

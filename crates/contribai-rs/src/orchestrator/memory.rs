@@ -192,6 +192,7 @@ impl Memory {
     // ── PRs ────────────────────────────────────────────────────────────────
 
     /// Record a submitted PR.
+    #[allow(clippy::too_many_arguments)]
     pub fn record_pr(
         &self,
         repo: &str,
@@ -248,10 +249,8 @@ impl Memory {
                 .query_map(params![s, limit as i64], |row| Ok(pr_row_to_map(row)))
                 .map_err(|e| ContribError::Config(format!("DB error: {}", e)))?;
 
-            for r in mapped {
-                if let Ok(m) = r {
-                    rows.push(m);
-                }
+            for m in mapped.flatten() {
+                rows.push(m);
             }
         } else {
             let mut stmt = db
@@ -265,10 +264,8 @@ impl Memory {
                 .query_map(params![limit as i64], |row| Ok(pr_row_to_map(row)))
                 .map_err(|e| ContribError::Config(format!("DB error: {}", e)))?;
 
-            for r in mapped {
-                if let Ok(m) = r {
-                    rows.push(m);
-                }
+            for m in mapped.flatten() {
+                rows.push(m);
             }
         }
 
@@ -363,6 +360,7 @@ impl Memory {
     // ── Outcome Learning ──────────────────────────────────────────────────
 
     /// Record PR outcome (merged, closed, rejected).
+    #[allow(clippy::too_many_arguments)]
     pub fn record_outcome(
         &self,
         repo: &str,
@@ -437,10 +435,10 @@ impl Memory {
                 }
                 merged_count += 1;
                 total_hours += hours;
-            } else if outcome == "closed" || outcome == "rejected" {
-                if !rejected_types.contains(pr_type) {
-                    rejected_types.push(pr_type.clone());
-                }
+            } else if (outcome == "closed" || outcome == "rejected")
+                && !rejected_types.contains(pr_type)
+            {
+                rejected_types.push(pr_type.clone());
             }
         }
 
