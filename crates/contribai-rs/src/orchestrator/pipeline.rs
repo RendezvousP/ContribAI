@@ -165,6 +165,58 @@ impl<'a> ContribPipeline<'a> {
         }
     }
 
+    /// Run pipeline on a **specific** repo (no discovery).
+    ///
+    /// Used by `contribai target <url>` and `contribai analyze <url>`.
+    pub async fn run_targeted(
+        &self,
+        owner: &str,
+        name: &str,
+        dry_run: bool,
+    ) -> Result<PipelineResult> {
+        let run_id = self.memory.start_run()?;
+        let full_name = format!("{}/{}", owner, name);
+
+        info!(repo = %full_name, dry_run, "🎯 Targeting specific repo");
+
+        self.event_bus
+            .emit(
+                Event::new(EventType::PipelineStart, "pipeline.run_targeted")
+                    .with_data("repo", full_name.as_str())
+                    .with_data("dry_run", dry_run),
+            )
+            .await;
+
+        // Fetch repo details from GitHub
+        let repo = self.github.get_repo_details(owner, name).await?;
+
+        // Build middleware context
+        let user_info = self.github.get_authenticated_user().await.ok();
+        let mut ctx = PipelineContext {
+            repo_name: full_name.clone(),
+            owner: owner.to_string(),
+            dry_run,
+            remaining_prs: self.config.github.max_prs_per_day as i32,
+            ..Default::default()
+        };
+        if let Some(ref u) = user_info {
+            ctx.metadata.insert("user".to_string(), u.clone());
+        }
+        let ctx = self.middleware_chain.execute(ctx).await?;
+
+        let result = self.process_repo(&repo, dry_run, 10, &ctx).await?;
+
+        self.memory.finish_run(
+            run_id,
+            result.repos_analyzed as i64,
+            result.prs_created as i64,
+            result.findings_total as i64,
+            result.errors.len() as i64,
+        )?;
+
+        Ok(result)
+    }
+
     /// Run the full pipeline: discover → analyze → generate → PR.
     pub async fn run(
         &self,

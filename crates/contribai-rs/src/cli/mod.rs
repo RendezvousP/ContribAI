@@ -422,6 +422,8 @@ impl Cli {
                 );
                 println!();
 
+                let (owner, name) = parse_github_url(&url)?;
+
                 let github = create_github(&config)?;
                 let llm = create_llm(&config)?;
                 let memory = create_memory(&config)?;
@@ -435,7 +437,7 @@ impl Cli {
                     &event_bus,
                 );
 
-                let result = pipeline.run(None, dry_run).await?;
+                let result = pipeline.run_targeted(&owner, &name, dry_run).await?;
                 print_result(&result, dry_run);
                 Ok(())
             }
@@ -546,6 +548,8 @@ impl Cli {
                 println!("🔍 Analyzing (dry-run): {}", url.cyan().bold());
                 println!();
 
+                let (owner, name) = parse_github_url(&url)?;
+
                 let github = create_github(&config)?;
                 let llm = create_llm(&config)?;
                 let memory = create_memory(&config)?;
@@ -560,9 +564,8 @@ impl Cli {
                 );
 
                 // Always dry_run=true — analysis only, no PRs created
-                let result = pipeline.run(None, true).await?;
+                let result = pipeline.run_targeted(&owner, &name, true).await?;
                 print_result(&result, true);
-                println!("\n   Targeted repo: {}", url.dimmed());
                 Ok(())
             }
 
