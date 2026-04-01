@@ -4,9 +4,7 @@
 //! Uses 12 weighted signals to prioritize findings for maximum impact
 //! and merge likelihood.
 
-use crate::core::models::{
-    Finding, FixComplexity, RemediationSpec, ScoringSignal, Severity,
-};
+use crate::core::models::{Finding, FixComplexity, RemediationSpec, ScoringSignal, Severity};
 
 /// Triage engine that scores and prioritizes findings.
 pub struct TriageEngine;

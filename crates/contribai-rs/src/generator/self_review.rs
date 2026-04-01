@@ -54,10 +54,7 @@ impl ContributionGenerator<'_> {
                 ));
             } else {
                 let snippet = safe_truncate(&change.new_content, 4000);
-                prompt.push_str(&format!(
-                    "\n### {}\n```\n{}\n```\n",
-                    change.path, snippet
-                ));
+                prompt.push_str(&format!("\n### {}\n```\n{}\n```\n", change.path, snippet));
             }
         }
 

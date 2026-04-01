@@ -122,8 +122,8 @@ impl ContribAIConfig {
 
         // Vertex AI project
         if self.llm.vertex_project.is_empty() {
-            self.llm.vertex_project = std::env::var("GOOGLE_CLOUD_PROJECT")
-                .unwrap_or_else(|_| resolve_gcloud_project());
+            self.llm.vertex_project =
+                std::env::var("GOOGLE_CLOUD_PROJECT").unwrap_or_else(|_| resolve_gcloud_project());
         }
     }
 }
@@ -271,8 +271,8 @@ impl Default for LlmConfig {
     fn default() -> Self {
         // Priority for Gemini: GEMINI_API_KEY env → Vertex AI via GOOGLE_CLOUD_PROJECT env → gcloud CLI
         let api_key = std::env::var("GEMINI_API_KEY").unwrap_or_default();
-        let vertex_project = std::env::var("GOOGLE_CLOUD_PROJECT")
-            .unwrap_or_else(|_| resolve_gcloud_project());
+        let vertex_project =
+            std::env::var("GOOGLE_CLOUD_PROJECT").unwrap_or_else(|_| resolve_gcloud_project());
         Self {
             provider: default_provider(),
             api_key,

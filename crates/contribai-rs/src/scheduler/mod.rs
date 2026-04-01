@@ -4,8 +4,8 @@
 //! Uses tokio cron for periodic automated runs
 //! with graceful shutdown and logging.
 
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use tokio::signal;
 use tracing::{error, info, warn};
 
@@ -93,7 +93,14 @@ impl ContribScheduler {
         let running = self.running.clone();
 
         info!(
-            cron = format!("{} {} {} {} {}", self.cron.minute, self.cron.hour, self.cron.day, self.cron.month, self.cron.day_of_week),
+            cron = format!(
+                "{} {} {} {} {}",
+                self.cron.minute,
+                self.cron.hour,
+                self.cron.day,
+                self.cron.month,
+                self.cron.day_of_week
+            ),
             "Scheduler started"
         );
 

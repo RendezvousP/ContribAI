@@ -106,30 +106,27 @@ pub struct Memory {
 impl Memory {
     /// Safely lock the DB mutex, recovering from poisoned state.
     fn lock_db(&self) -> Result<std::sync::MutexGuard<'_, Connection>> {
-        self.db.lock().map_err(|e| {
-            ContribError::Config(format!("DB lock poisoned: {}", e))
-        })
+        self.db
+            .lock()
+            .map_err(|e| ContribError::Config(format!("DB lock poisoned: {}", e)))
     }
 
     /// Open (or create) a SQLite database.
     pub fn open(db_path: &Path) -> Result<Self> {
         if let Some(parent) = db_path.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| {
-                ContribError::Config(format!("Cannot create db dir: {}", e))
-            })?;
+            std::fs::create_dir_all(parent)
+                .map_err(|e| ContribError::Config(format!("Cannot create db dir: {}", e)))?;
         }
 
-        let conn = Connection::open(db_path).map_err(|e| {
-            ContribError::Config(format!("SQLite open error: {}", e))
-        })?;
+        let conn = Connection::open(db_path)
+            .map_err(|e| ContribError::Config(format!("SQLite open error: {}", e)))?;
 
         // Enable WAL for concurrency
         conn.execute_batch("PRAGMA journal_mode=WAL;").ok();
 
         // Create schema
-        conn.execute_batch(SCHEMA).map_err(|e| {
-            ContribError::Config(format!("Schema init error: {}", e))
-        })?;
+        conn.execute_batch(SCHEMA)
+            .map_err(|e| ContribError::Config(format!("Schema init error: {}", e)))?;
 
         info!(path = ?db_path, "Memory initialized");
         Ok(Self {
@@ -140,12 +137,10 @@ impl Memory {
 
     /// Open an in-memory database (for tests).
     pub fn open_in_memory() -> Result<Self> {
-        let conn = Connection::open_in_memory().map_err(|e| {
-            ContribError::Config(format!("SQLite error: {}", e))
-        })?;
-        conn.execute_batch(SCHEMA).map_err(|e| {
-            ContribError::Config(format!("Schema error: {}", e))
-        })?;
+        let conn = Connection::open_in_memory()
+            .map_err(|e| ContribError::Config(format!("SQLite error: {}", e)))?;
+        conn.execute_batch(SCHEMA)
+            .map_err(|e| ContribError::Config(format!("Schema error: {}", e)))?;
         Ok(Self {
             db: Mutex::new(conn),
             db_path: PathBuf::from(":memory:"),
@@ -182,7 +177,13 @@ impl Memory {
             "INSERT OR REPLACE INTO analyzed_repos
              (full_name, language, stars, analyzed_at, findings)
              VALUES (?1, ?2, ?3, ?4, ?5)",
-            params![full_name, language, stars, Utc::now().to_rfc3339(), findings_count],
+            params![
+                full_name,
+                language,
+                stars,
+                Utc::now().to_rfc3339(),
+                findings_count
+            ],
         )
         .map_err(|e| ContribError::Config(format!("DB error: {}", e)))?;
         Ok(())
@@ -226,7 +227,11 @@ impl Memory {
     }
 
     /// Get PRs, optionally filtered by status.
-    pub fn get_prs(&self, status: Option<&str>, limit: usize) -> Result<Vec<HashMap<String, String>>> {
+    pub fn get_prs(
+        &self,
+        status: Option<&str>,
+        limit: usize,
+    ) -> Result<Vec<HashMap<String, String>>> {
         let db = self.lock_db()?;
         let mut rows = Vec::new();
 
@@ -240,9 +245,7 @@ impl Memory {
                 .map_err(|e| ContribError::Config(format!("DB error: {}", e)))?;
 
             let mapped = stmt
-                .query_map(params![s, limit as i64], |row| {
-                    Ok(pr_row_to_map(row))
-                })
+                .query_map(params![s, limit as i64], |row| Ok(pr_row_to_map(row)))
                 .map_err(|e| ContribError::Config(format!("DB error: {}", e)))?;
 
             for r in mapped {
@@ -259,9 +262,7 @@ impl Memory {
                 .map_err(|e| ContribError::Config(format!("DB error: {}", e)))?;
 
             let mapped = stmt
-                .query_map(params![limit as i64], |row| {
-                    Ok(pr_row_to_map(row))
-                })
+                .query_map(params![limit as i64], |row| Ok(pr_row_to_map(row)))
                 .map_err(|e| ContribError::Config(format!("DB error: {}", e)))?;
 
             for r in mapped {
@@ -314,7 +315,14 @@ impl Memory {
         db.execute(
             "UPDATE run_log SET finished_at = ?1, repos_analyzed = ?2,
              prs_created = ?3, findings = ?4, errors = ?5 WHERE id = ?6",
-            params![Utc::now().to_rfc3339(), repos_analyzed, prs_created, findings, errors, run_id],
+            params![
+                Utc::now().to_rfc3339(),
+                repos_analyzed,
+                prs_created,
+                findings,
+                errors,
+                run_id
+            ],
         )
         .map_err(|e| ContribError::Config(format!("DB error: {}", e)))?;
         Ok(())
@@ -373,8 +381,14 @@ impl Memory {
                   time_to_close_hours, recorded_at)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
                 params![
-                    repo, pr_number, pr_url, pr_type, outcome, feedback,
-                    time_to_close_hours, Utc::now().to_rfc3339()
+                    repo,
+                    pr_number,
+                    pr_url,
+                    pr_type,
+                    outcome,
+                    feedback,
+                    time_to_close_hours,
+                    Utc::now().to_rfc3339()
                 ],
             )
             .map_err(|e| ContribError::Config(format!("DB error: {}", e)))?;
@@ -501,7 +515,14 @@ impl Memory {
             "INSERT OR REPLACE INTO working_memory
              (repo, key, value, language, created_at, expires_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-            params![repo, key, value, language, now.to_rfc3339(), expires.to_rfc3339()],
+            params![
+                repo,
+                key,
+                value,
+                language,
+                now.to_rfc3339(),
+                expires.to_rfc3339()
+            ],
         )
         .map_err(|e| ContribError::Config(format!("DB error: {}", e)))?;
         Ok(())
@@ -552,7 +573,10 @@ impl Memory {
         let now = Utc::now().to_rfc3339();
         let db = self.lock_db()?;
         let deleted = db
-            .execute("DELETE FROM working_memory WHERE expires_at <= ?1", params![now])
+            .execute(
+                "DELETE FROM working_memory WHERE expires_at <= ?1",
+                params![now],
+            )
             .map_err(|e| ContribError::Config(format!("DB error: {}", e)))?;
         Ok(deleted)
     }
@@ -572,14 +596,20 @@ pub struct RepoPreferences {
 fn pr_row_to_map(row: &rusqlite::Row) -> HashMap<String, String> {
     let mut m = HashMap::new();
     m.insert("repo".into(), row.get::<_, String>(0).unwrap_or_default());
-    m.insert("pr_number".into(), row.get::<_, i64>(1).unwrap_or(0).to_string());
+    m.insert(
+        "pr_number".into(),
+        row.get::<_, i64>(1).unwrap_or(0).to_string(),
+    );
     m.insert("pr_url".into(), row.get::<_, String>(2).unwrap_or_default());
     m.insert("title".into(), row.get::<_, String>(3).unwrap_or_default());
     m.insert("type".into(), row.get::<_, String>(4).unwrap_or_default());
     m.insert("status".into(), row.get::<_, String>(5).unwrap_or_default());
     m.insert("branch".into(), row.get::<_, String>(6).unwrap_or_default());
     m.insert("fork".into(), row.get::<_, String>(7).unwrap_or_default());
-    m.insert("created_at".into(), row.get::<_, String>(8).unwrap_or_default());
+    m.insert(
+        "created_at".into(),
+        row.get::<_, String>(8).unwrap_or_default(),
+    );
     m
 }
 
@@ -604,9 +634,15 @@ mod tests {
     fn test_pr_recording() {
         let mem = test_memory();
         mem.record_pr(
-            "test/repo", 42, "https://github.com/test/repo/pull/42",
-            "fix: issue", "code_quality", "fix/issue", "fork/repo",
-        ).unwrap();
+            "test/repo",
+            42,
+            "https://github.com/test/repo/pull/42",
+            "fix: issue",
+            "code_quality",
+            "fix/issue",
+            "fork/repo",
+        )
+        .unwrap();
 
         let prs = mem.get_prs(None, 10).unwrap();
         assert_eq!(prs.len(), 1);
@@ -616,9 +652,8 @@ mod tests {
     #[test]
     fn test_pr_status_update() {
         let mem = test_memory();
-        mem.record_pr(
-            "test/repo", 1, "url", "title", "fix", "branch", "fork",
-        ).unwrap();
+        mem.record_pr("test/repo", 1, "url", "title", "fix", "branch", "fork")
+            .unwrap();
 
         mem.update_pr_status("test/repo", 1, "merged").unwrap();
         let prs = mem.get_prs(Some("merged"), 10).unwrap();
@@ -628,8 +663,10 @@ mod tests {
     #[test]
     fn test_today_pr_count() {
         let mem = test_memory();
-        mem.record_pr("a/b", 1, "url1", "t1", "fix", "", "").unwrap();
-        mem.record_pr("a/b", 2, "url2", "t2", "fix", "", "").unwrap();
+        mem.record_pr("a/b", 1, "url1", "t1", "fix", "", "")
+            .unwrap();
+        mem.record_pr("a/b", 2, "url2", "t2", "fix", "", "")
+            .unwrap();
 
         let count = mem.get_today_pr_count().unwrap();
         assert_eq!(count, 2);
@@ -650,9 +687,20 @@ mod tests {
     fn test_outcome_learning() {
         let mem = test_memory();
 
-        mem.record_outcome("test/repo", 1, "url1", "security_fix", "merged", "", 24.0).unwrap();
-        mem.record_outcome("test/repo", 2, "url2", "code_quality", "closed", "not needed", 48.0).unwrap();
-        mem.record_outcome("test/repo", 3, "url3", "security_fix", "merged", "", 12.0).unwrap();
+        mem.record_outcome("test/repo", 1, "url1", "security_fix", "merged", "", 24.0)
+            .unwrap();
+        mem.record_outcome(
+            "test/repo",
+            2,
+            "url2",
+            "code_quality",
+            "closed",
+            "not needed",
+            48.0,
+        )
+        .unwrap();
+        mem.record_outcome("test/repo", 3, "url3", "security_fix", "merged", "", 12.0)
+            .unwrap();
 
         let prefs = mem.get_repo_preferences("test/repo").unwrap().unwrap();
         assert!(prefs.preferred_types.contains(&"security_fix".to_string()));
@@ -665,7 +713,8 @@ mod tests {
     fn test_working_memory() {
         let mem = test_memory();
 
-        mem.store_context("test/repo", "style", "4 spaces indent", "python", 24.0).unwrap();
+        mem.store_context("test/repo", "style", "4 spaces indent", "python", 24.0)
+            .unwrap();
         let val = mem.get_context("test/repo", "style").unwrap();
         assert_eq!(val, Some("4 spaces indent".to_string()));
 
@@ -676,9 +725,12 @@ mod tests {
     #[test]
     fn test_similar_context() {
         let mem = test_memory();
-        mem.store_context("repo/a", "style", "PEP 8", "python", 24.0).unwrap();
-        mem.store_context("repo/b", "style", "Black format", "python", 24.0).unwrap();
-        mem.store_context("repo/c", "style", "gofmt", "go", 24.0).unwrap();
+        mem.store_context("repo/a", "style", "PEP 8", "python", 24.0)
+            .unwrap();
+        mem.store_context("repo/b", "style", "Black format", "python", 24.0)
+            .unwrap();
+        mem.store_context("repo/c", "style", "gofmt", "go", 24.0)
+            .unwrap();
 
         let similar = mem.get_similar_context("python", "style", 10).unwrap();
         assert_eq!(similar.len(), 2);

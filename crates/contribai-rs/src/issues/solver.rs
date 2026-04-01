@@ -8,7 +8,9 @@ use regex::Regex;
 use std::collections::HashMap;
 use tracing::{info, warn};
 
-use crate::core::models::{ContributionType, FileNode, Finding, Issue, RepoContext, Repository, Severity};
+use crate::core::models::{
+    ContributionType, FileNode, Finding, Issue, RepoContext, Repository, Severity,
+};
 use crate::github::client::GitHubClient;
 use crate::llm::provider::LlmProvider;
 
@@ -93,12 +95,30 @@ impl<'a> IssueSolver<'a> {
         // Keyword matching on title
         let title = issue.title.to_lowercase();
         let keyword_map: &[(&[&str], IssueCategory)] = &[
-            (&["bug", "fix", "error", "crash", "broken", "fail"], IssueCategory::Bug),
-            (&["add", "feature", "implement", "support", "new"], IssueCategory::Feature),
-            (&["doc", "readme", "typo", "documentation", "example"], IssueCategory::Docs),
-            (&["security", "vulnerability", "cve", "xss", "injection"], IssueCategory::Security),
-            (&["slow", "performance", "optimize", "speed", "memory"], IssueCategory::Performance),
-            (&["ui", "ux", "responsive", "accessibility", "design"], IssueCategory::UiUx),
+            (
+                &["bug", "fix", "error", "crash", "broken", "fail"],
+                IssueCategory::Bug,
+            ),
+            (
+                &["add", "feature", "implement", "support", "new"],
+                IssueCategory::Feature,
+            ),
+            (
+                &["doc", "readme", "typo", "documentation", "example"],
+                IssueCategory::Docs,
+            ),
+            (
+                &["security", "vulnerability", "cve", "xss", "injection"],
+                IssueCategory::Security,
+            ),
+            (
+                &["slow", "performance", "optimize", "speed", "memory"],
+                IssueCategory::Performance,
+            ),
+            (
+                &["ui", "ux", "responsive", "accessibility", "design"],
+                IssueCategory::UiUx,
+            ),
         ];
 
         for (keywords, category) in keyword_map {
@@ -204,7 +224,11 @@ impl<'a> IssueSolver<'a> {
             issue.number,
             issue.title,
             body,
-            if issue.labels.is_empty() { "none".to_string() } else { issue.labels.join(", ") },
+            if issue.labels.is_empty() {
+                "none".to_string()
+            } else {
+                issue.labels.join(", ")
+            },
             file_tree_str,
             relevant_code
         );
@@ -240,12 +264,18 @@ impl<'a> IssueSolver<'a> {
             id: format!("issue-{}", issue.number),
             finding_type: contrib_type,
             severity,
-            title: parsed.get("TITLE").cloned().unwrap_or_else(|| issue.title.clone()),
+            title: parsed
+                .get("TITLE")
+                .cloned()
+                .unwrap_or_else(|| issue.title.clone()),
             description: parsed
                 .get("DESCRIPTION")
                 .cloned()
                 .unwrap_or_else(|| body.to_string()),
-            file_path: parsed.get("FILE_PATH").cloned().unwrap_or_else(|| "unknown".into()),
+            file_path: parsed
+                .get("FILE_PATH")
+                .cloned()
+                .unwrap_or_else(|| "unknown".into()),
             suggestion: parsed.get("SUGGESTION").cloned(),
             confidence: 0.85,
             line_start: None,
@@ -565,10 +595,7 @@ impl<'a> IssueSolver<'a> {
     /// Matches patterns like `src/foo.rs`, `lib/bar.py`, `README.md`.
     fn extract_file_paths(text: &str) -> Vec<String> {
         let re = Regex::new(r"[\w/]+\.\w{1,4}").unwrap_or_else(|_| Regex::new(".^").unwrap());
-        let mut paths: Vec<String> = re
-            .find_iter(text)
-            .map(|m| m.as_str().to_string())
-            .collect();
+        let mut paths: Vec<String> = re.find_iter(text).map(|m| m.as_str().to_string()).collect();
         paths.dedup();
         paths
     }
@@ -590,11 +617,7 @@ impl<'a> IssueSolver<'a> {
             .map(|dir| {
                 let files = &dirs[dir];
                 let files_str = if files.len() > 8 {
-                    format!(
-                        "{} (+{} more)",
-                        files[..8].join(", "),
-                        files.len() - 8
-                    )
+                    format!("{} (+{} more)", files[..8].join(", "), files.len() - 8)
                 } else {
                     files.join(", ")
                 };
@@ -609,8 +632,16 @@ impl<'a> IssueSolver<'a> {
         for line in response.lines() {
             if let Some((key, value)) = line.split_once(':') {
                 let key = key.trim().to_uppercase();
-                if ["FILE_PATH", "PATH", "SEVERITY", "TITLE", "DESCRIPTION", "SUGGESTION", "ACTION"]
-                    .contains(&key.as_str())
+                if [
+                    "FILE_PATH",
+                    "PATH",
+                    "SEVERITY",
+                    "TITLE",
+                    "DESCRIPTION",
+                    "SUGGESTION",
+                    "ACTION",
+                ]
+                .contains(&key.as_str())
                 {
                     parsed.insert(key, value.trim().to_string());
                 }
@@ -664,8 +695,8 @@ impl<'a> IssueSolver<'a> {
                 suggestion: parsed.get("SUGGESTION").cloned(),
                 confidence: 0.80,
                 line_start: None,
-            line_end: None,
-            priority_signals: vec![],
+                line_end: None,
+                priority_signals: vec![],
             });
         }
 
@@ -692,7 +723,10 @@ mod tests {
 
     #[test]
     fn test_classify_by_label() {
-        let solver = IssueSolver { llm: &MockLlm, github: &unsafe_mock_github() };
+        let solver = IssueSolver {
+            llm: &MockLlm,
+            github: &unsafe_mock_github(),
+        };
         assert_eq!(
             solver.classify_issue(&make_issue("anything", &["bug"])),
             IssueCategory::Bug
@@ -709,7 +743,10 @@ mod tests {
 
     #[test]
     fn test_classify_by_title() {
-        let solver = IssueSolver { llm: &MockLlm, github: &unsafe_mock_github() };
+        let solver = IssueSolver {
+            llm: &MockLlm,
+            github: &unsafe_mock_github(),
+        };
         assert_eq!(
             solver.classify_issue(&make_issue("fix crash on startup", &[])),
             IssueCategory::Bug
@@ -726,7 +763,10 @@ mod tests {
 
     #[test]
     fn test_complexity_good_first() {
-        let solver = IssueSolver { llm: &MockLlm, github: &unsafe_mock_github() };
+        let solver = IssueSolver {
+            llm: &MockLlm,
+            github: &unsafe_mock_github(),
+        };
         assert_eq!(
             solver.estimate_complexity(&make_issue("easy fix", &["good first issue"])),
             1
@@ -735,7 +775,10 @@ mod tests {
 
     #[test]
     fn test_filter_solvable() {
-        let solver = IssueSolver { llm: &MockLlm, github: &unsafe_mock_github() };
+        let solver = IssueSolver {
+            llm: &MockLlm,
+            github: &unsafe_mock_github(),
+        };
         let issues = vec![
             make_issue("fix bug", &["bug"]),
             make_issue("x".repeat(6000).as_str(), &[]),
@@ -769,7 +812,11 @@ mod tests {
     #[async_trait::async_trait]
     impl LlmProvider for MockLlm {
         async fn complete(
-            &self, _: &str, _: Option<&str>, _: Option<f64>, _: Option<u32>,
+            &self,
+            _: &str,
+            _: Option<&str>,
+            _: Option<f64>,
+            _: Option<u32>,
         ) -> Result<String> {
             Ok("mock".into())
         }

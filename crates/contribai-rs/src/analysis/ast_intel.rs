@@ -61,10 +61,7 @@ pub struct AstIntel;
 impl AstIntel {
     /// Extract symbols (functions, classes, methods, etc.) from source code.
     pub fn extract_symbols(source: &str, file_path: &str) -> Result<Vec<Symbol>> {
-        let ext = file_path
-            .rsplit('.')
-            .next()
-            .unwrap_or("");
+        let ext = file_path.rsplit('.').next().unwrap_or("");
 
         let lang = match Language::from_extension(ext) {
             Some(l) => l,
@@ -88,11 +85,7 @@ impl AstIntel {
         let mut symbols = Vec::new();
         Self::walk_node(root, source, file_path, lang, &mut symbols);
 
-        debug!(
-            path = file_path,
-            count = symbols.len(),
-            "Extracted symbols"
-        );
+        debug!(path = file_path, count = symbols.len(), "Extracted symbols");
         Ok(symbols)
     }
 
@@ -209,7 +202,12 @@ impl AstIntel {
     /// Extract the name of a symbol from its AST node.
     fn extract_name(node: tree_sitter::Node, source: &str) -> Option<String> {
         // Try common name child node types
-        let name_kinds = ["name", "identifier", "property_identifier", "type_identifier"];
+        let name_kinds = [
+            "name",
+            "identifier",
+            "property_identifier",
+            "type_identifier",
+        ];
         let mut cursor = node.walk();
         for child in node.children(&mut cursor) {
             if name_kinds.contains(&child.kind()) {
@@ -295,9 +293,18 @@ CONSTANT = "hello"
 "#;
         let symbols = AstIntel::extract_symbols(source, "test.py").unwrap();
 
-        let funcs: Vec<_> = symbols.iter().filter(|s| s.kind == SymbolKind::Function).collect();
-        let classes: Vec<_> = symbols.iter().filter(|s| s.kind == SymbolKind::Class).collect();
-        let imports: Vec<_> = symbols.iter().filter(|s| s.kind == SymbolKind::Import).collect();
+        let funcs: Vec<_> = symbols
+            .iter()
+            .filter(|s| s.kind == SymbolKind::Function)
+            .collect();
+        let classes: Vec<_> = symbols
+            .iter()
+            .filter(|s| s.kind == SymbolKind::Class)
+            .collect();
+        let imports: Vec<_> = symbols
+            .iter()
+            .filter(|s| s.kind == SymbolKind::Import)
+            .collect();
 
         assert!(funcs.len() >= 1, "Should find standalone_func");
         assert_eq!(classes.len(), 1, "Should find MyClass");
@@ -332,9 +339,15 @@ impl Config {
 "#;
         let symbols = AstIntel::extract_symbols(source, "test.rs").unwrap();
 
-        let has_struct = symbols.iter().any(|s| s.kind == SymbolKind::Struct && s.name == "Config");
-        let has_enum = symbols.iter().any(|s| s.kind == SymbolKind::Enum && s.name == "Status");
-        let has_func = symbols.iter().any(|s| s.kind == SymbolKind::Function && s.name == "process");
+        let has_struct = symbols
+            .iter()
+            .any(|s| s.kind == SymbolKind::Struct && s.name == "Config");
+        let has_enum = symbols
+            .iter()
+            .any(|s| s.kind == SymbolKind::Enum && s.name == "Status");
+        let has_func = symbols
+            .iter()
+            .any(|s| s.kind == SymbolKind::Function && s.name == "process");
         let has_import = symbols.iter().any(|s| s.kind == SymbolKind::Import);
 
         assert!(has_struct, "Should find Config struct");

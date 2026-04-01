@@ -89,10 +89,7 @@ pub fn run_init_wizard(output_path: Option<&Path>) -> anyhow::Result<Option<Wiza
     let _ = term.clear_screen();
 
     println!();
-    println!(
-        "{}",
-        style("  🤖 ContribAI Setup Wizard").cyan().bold()
-    );
+    println!("{}", style("  🤖 ContribAI Setup Wizard").cyan().bold());
     println!(
         "  {}",
         style("Configure your AI provider, GitHub auth, and limits.").dim()
@@ -131,14 +128,9 @@ pub fn run_init_wizard(output_path: Option<&Path>) -> anyhow::Result<Option<Wiza
             );
             let proj: String = Input::new()
                 .with_prompt("Google Cloud Project ID")
-                .default(
-                    std::env::var("GOOGLE_CLOUD_PROJECT").unwrap_or_default()
-                )
+                .default(std::env::var("GOOGLE_CLOUD_PROJECT").unwrap_or_default())
                 .interact_text()?;
-            (
-                None,
-                if proj.is_empty() { None } else { Some(proj) },
-            )
+            (None, if proj.is_empty() { None } else { Some(proj) })
         }
         LlmChoice::OpenAi => {
             println!(
@@ -174,7 +166,10 @@ pub fn run_init_wizard(output_path: Option<&Path>) -> anyhow::Result<Option<Wiza
     println!();
 
     // ── Step 3: GitHub auth ──────────────────────────────────────────────────
-    println!("{}", style("Step 3/4 — GitHub Authentication").yellow().bold());
+    println!(
+        "{}",
+        style("Step 3/4 — GitHub Authentication").yellow().bold()
+    );
 
     let gh_ok = which::which("gh").is_ok();
     let gh_choices = if gh_ok {
@@ -204,7 +199,11 @@ pub fn run_init_wizard(output_path: Option<&Path>) -> anyhow::Result<Option<Wiza
             .with_prompt("GitHub Personal Access Token (hidden)")
             .allow_empty_password(true)
             .interact()?;
-        if t.is_empty() { None } else { Some(t) }
+        if t.is_empty() {
+            None
+        } else {
+            Some(t)
+        }
     } else {
         None // will use gh CLI auto-detect at runtime
     };
@@ -238,7 +237,14 @@ pub fn run_init_wizard(output_path: Option<&Path>) -> anyhow::Result<Option<Wiza
     println!();
 
     // ── Confirm ──────────────────────────────────────────────────────────────
-    print_wizard_summary(&provider, &api_key, &vertex_project, max_prs, max_repos, &path_str);
+    print_wizard_summary(
+        &provider,
+        &api_key,
+        &vertex_project,
+        max_prs,
+        max_repos,
+        &path_str,
+    );
 
     let confirmed = Confirm::new()
         .with_prompt("Save configuration?")
@@ -270,19 +276,43 @@ fn print_wizard_summary(
     path: &str,
 ) {
     println!("{}", style("  Summary").bold());
-    println!("  {:<20} {}", style("Provider:").dim(), style(provider.provider_name()).cyan());
-    println!("  {:<20} {}", style("Model:").dim(), style(provider.default_model()).cyan());
+    println!(
+        "  {:<20} {}",
+        style("Provider:").dim(),
+        style(provider.provider_name()).cyan()
+    );
+    println!(
+        "  {:<20} {}",
+        style("Model:").dim(),
+        style(provider.default_model()).cyan()
+    );
 
     if let Some(k) = api_key {
         let masked = mask_secret(k);
         println!("  {:<20} {}", style("API Key:").dim(), style(masked).cyan());
     }
     if let Some(p) = vertex_project {
-        println!("  {:<20} {}", style("Vertex Project:").dim(), style(p).cyan());
+        println!(
+            "  {:<20} {}",
+            style("Vertex Project:").dim(),
+            style(p).cyan()
+        );
     }
-    println!("  {:<20} {}", style("Max PRs/day:").dim(), style(max_prs).cyan());
-    println!("  {:<20} {}", style("Max repos/run:").dim(), style(max_repos).cyan());
-    println!("  {:<20} {}", style("Config path:").dim(), style(path).cyan());
+    println!(
+        "  {:<20} {}",
+        style("Max PRs/day:").dim(),
+        style(max_prs).cyan()
+    );
+    println!(
+        "  {:<20} {}",
+        style("Max repos/run:").dim(),
+        style(max_repos).cyan()
+    );
+    println!(
+        "  {:<20} {}",
+        style("Config path:").dim(),
+        style(path).cyan()
+    );
     println!();
 }
 
@@ -336,7 +366,8 @@ fn apply_wizard_to_yaml(yaml: &str, result: &WizardResult) -> String {
         let trimmed = lines[i].trim_start().to_string();
 
         // LLM provider
-        if trimmed.starts_with("provider:") && (yaml.contains("\nllm:") || yaml.starts_with("llm:")) {
+        if trimmed.starts_with("provider:") && (yaml.contains("\nllm:") || yaml.starts_with("llm:"))
+        {
             lines[i] = format!("  provider: \"{}\"", result.provider.provider_name());
         }
         // Model
@@ -469,7 +500,8 @@ notifications:
 multi_model:
   enabled: true
   strategy: "balanced"
-"#.to_string()
+"#
+    .to_string()
 }
 
 #[cfg(test)]

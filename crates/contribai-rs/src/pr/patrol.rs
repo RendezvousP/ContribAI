@@ -79,7 +79,10 @@ impl<'a> PrPatrol<'a> {
             }
             let (owner, repo_name) = (parts[0], parts[1]);
 
-            match self.check_single_pr(owner, repo_name, pr_number, &username, dry_run, &mut result).await {
+            match self
+                .check_single_pr(owner, repo_name, pr_number, &username, dry_run, &mut result)
+                .await
+            {
                 Ok(_) => {}
                 Err(e) => {
                     let msg = format!("Error patrolling PR #{}: {}", pr_number, e);
@@ -117,7 +120,9 @@ impl<'a> PrPatrol<'a> {
         );
 
         // Collect feedback
-        let feedback = self.collect_feedback(owner, repo, pr_number, username).await;
+        let feedback = self
+            .collect_feedback(owner, repo, pr_number, username)
+            .await;
 
         if feedback.is_empty() {
             info!(pr = pr_number, "✅ No pending feedback");
@@ -132,7 +137,9 @@ impl<'a> PrPatrol<'a> {
             .filter(|f| {
                 matches!(
                     f.action,
-                    FeedbackAction::CodeChange | FeedbackAction::StyleFix | FeedbackAction::Question
+                    FeedbackAction::CodeChange
+                        | FeedbackAction::StyleFix
+                        | FeedbackAction::Question
                 )
             })
             .collect();
@@ -231,7 +238,11 @@ impl<'a> PrPatrol<'a> {
         }
 
         // Inline review comments
-        if let Ok(reviews) = self.github.get_pr_review_comments(owner, repo, pr_number).await {
+        if let Ok(reviews) = self
+            .github
+            .get_pr_review_comments(owner, repo, pr_number)
+            .await
+        {
             for c in reviews {
                 let login = c["user"]["login"].as_str().unwrap_or("");
                 let body = c["body"].as_str().unwrap_or("");
@@ -281,7 +292,13 @@ impl<'a> PrPatrol<'a> {
                 } else {
                     "general".to_string()
                 };
-                format!("Comment #{} (by @{}, {}):\n{}", i + 1, f.author, loc, f.body)
+                format!(
+                    "Comment #{} (by @{}, {}):\n{}",
+                    i + 1,
+                    f.author,
+                    loc,
+                    f.body
+                )
             })
             .collect::<Vec<_>>()
             .join("\n\n");
@@ -369,9 +386,7 @@ impl<'a> PrPatrol<'a> {
         feedback: &FeedbackItem,
     ) -> bool {
         let head = &pr_data["head"];
-        let fork_owner = head["repo"]["owner"]["login"]
-            .as_str()
-            .unwrap_or(owner);
+        let fork_owner = head["repo"]["owner"]["login"].as_str().unwrap_or(owner);
         let fork_repo = head["repo"]["name"].as_str().unwrap_or(repo);
         let branch = head["ref"].as_str().unwrap_or("main");
 
@@ -426,10 +441,7 @@ impl<'a> PrPatrol<'a> {
                 &feedback.body.chars().take(60).collect::<String>()
             );
 
-            let signoff = self
-                .user
-                .as_ref()
-                .and_then(|u| PrPatrol::build_signoff(u));
+            let signoff = self.user.as_ref().and_then(|u| PrPatrol::build_signoff(u));
 
             match self
                 .github
@@ -579,12 +591,13 @@ impl<'a> PrPatrol<'a> {
         timeout_mins: u64,
         poll_interval_secs: u64,
     ) -> CiOutcome {
-        let deadline = std::time::Instant::now()
-            + std::time::Duration::from_secs(timeout_mins * 60);
+        let deadline =
+            std::time::Instant::now() + std::time::Duration::from_secs(timeout_mins * 60);
         let poll = std::time::Duration::from_secs(poll_interval_secs);
 
         info!(
-            owner, repo,
+            owner,
+            repo,
             sha = &sha[..8.min(sha.len())],
             timeout_mins,
             "🔍 CI Monitor started"
@@ -745,7 +758,11 @@ mod tests {
                 CiOutcome::Timeout => "ci_timeout",
                 CiOutcome::NoCi => "open",
             };
-            assert_eq!(status, expected, "Outcome {:?} should map to '{}'", outcome, expected);
+            assert_eq!(
+                status, expected,
+                "Outcome {:?} should map to '{}'",
+                outcome, expected
+            );
         }
     }
 }

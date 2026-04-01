@@ -11,14 +11,11 @@ use tracing::{info, warn};
 
 use crate::core::safe_truncate;
 
-static RE_SLUG: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"[^a-z0-9]+").unwrap());
+static RE_SLUG: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[^a-z0-9]+").unwrap());
 
 use crate::core::config::ContributionConfig;
 use crate::core::error::Result;
-use crate::core::models::{
-    Contribution, ContributionType, FileChange, Finding, RepoContext,
-};
+use crate::core::models::{Contribution, ContributionType, FileChange, Finding, RepoContext};
 use crate::github::guidelines::{adapt_pr_title, extract_scope_from_path, RepoGuidelines};
 use crate::llm::provider::LlmProvider;
 
@@ -308,9 +305,7 @@ impl<'a> ContributionGenerator<'a> {
         // Extract scope from first changed file path (matching Python logic)
         let scope = changes.first().and_then(|c| {
             let parts: Vec<&str> = c.path.split('/').collect();
-            if parts.len() >= 2
-                && matches!(parts[0], "src" | "packages" | "apps" | "libs")
-            {
+            if parts.len() >= 2 && matches!(parts[0], "src" | "packages" | "apps" | "libs") {
                 Some(parts[1].to_string())
             } else {
                 None

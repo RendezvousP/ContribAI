@@ -18,15 +18,24 @@ pub struct LeaderboardEntry {
 impl LeaderboardEntry {
     pub fn merge_rate(&self) -> f64 {
         let decided = self.merged + self.closed;
-        if decided == 0 { 0.0 } else { self.merged as f64 / decided as f64 * 100.0 }
+        if decided == 0 {
+            0.0
+        } else {
+            self.merged as f64 / decided as f64 * 100.0
+        }
     }
 
     pub fn status(&self) -> &str {
         let rate = self.merge_rate();
-        if rate >= 70.0 { "excellent" }
-        else if rate >= 40.0 { "good" }
-        else if rate > 0.0 { "needs_improvement" }
-        else { "pending" }
+        if rate >= 70.0 {
+            "excellent"
+        } else if rate >= 40.0 {
+            "good"
+        } else if rate > 0.0 {
+            "needs_improvement"
+        } else {
+            "pending"
+        }
     }
 }
 
@@ -42,7 +51,11 @@ pub struct TypeStats {
 impl TypeStats {
     pub fn merge_rate(&self) -> f64 {
         let decided = self.merged + self.closed;
-        if decided == 0 { 0.0 } else { self.merged as f64 / decided as f64 * 100.0 }
+        if decided == 0 {
+            0.0
+        } else {
+            self.merged as f64 / decided as f64 * 100.0
+        }
     }
 }
 
@@ -59,9 +72,10 @@ impl<'a> Leaderboard<'a> {
     /// Get overall contribution statistics.
     pub fn get_overall_stats(&self) -> OverallStats {
         let mut stats = OverallStats::default();
-        let mut stmt = match self.db.prepare(
-            "SELECT status, COUNT(*) FROM submitted_prs GROUP BY status",
-        ) {
+        let mut stmt = match self
+            .db
+            .prepare("SELECT status, COUNT(*) FROM submitted_prs GROUP BY status")
+        {
             Ok(s) => s,
             Err(e) => {
                 debug!(error = %e, "Could not query overall stats");
@@ -247,7 +261,9 @@ mod tests {
         let lb = Leaderboard::new(&db);
         let merges = lb.get_recent_merges(5);
         assert_eq!(merges.len(), 2);
-        assert!(merges.iter().all(|m| m.pr_url.is_empty() || m.pr_url.len() >= 0));
+        assert!(merges
+            .iter()
+            .all(|m| m.pr_url.is_empty() || m.pr_url.len() >= 0));
     }
 
     #[test]

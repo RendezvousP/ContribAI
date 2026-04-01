@@ -17,25 +17,101 @@ pub struct KeyDef {
 }
 
 pub const KNOWN_KEYS: &[KeyDef] = &[
-    KeyDef { key: "llm.provider",       description: "LLM provider",               valid_values: Some(&["gemini","vertex","openai","anthropic","ollama"]) },
-    KeyDef { key: "llm.model",          description: "Model name",                  valid_values: None },
-    KeyDef { key: "llm.api_key",        description: "LLM API key (secret)",        valid_values: None },
-    KeyDef { key: "llm.vertex_project", description: "Vertex AI GCP project ID",    valid_values: None },
-    KeyDef { key: "llm.vertex_location",description: "Vertex AI location",          valid_values: None },
-    KeyDef { key: "llm.temperature",    description: "LLM temperature (0.0-1.0)",   valid_values: None },
-    KeyDef { key: "llm.max_tokens",     description: "Max tokens per LLM call",     valid_values: None },
-    KeyDef { key: "github.token",       description: "GitHub personal access token",valid_values: None },
-    KeyDef { key: "github.max_prs_per_day",   description: "Max PRs to create per day",  valid_values: None },
-    KeyDef { key: "github.max_repos_per_run", description: "Max repos per pipeline run", valid_values: None },
-    KeyDef { key: "github.rate_limit_buffer", description: "GitHub rate limit buffer",   valid_values: None },
-    KeyDef { key: "web.host",           description: "Web dashboard host",          valid_values: None },
-    KeyDef { key: "web.port",           description: "Web dashboard port",          valid_values: None },
-    KeyDef { key: "web.enabled",        description: "Web dashboard enabled",       valid_values: Some(&["true","false"]) },
-    KeyDef { key: "scheduler.enabled",  description: "Scheduler enabled",           valid_values: Some(&["true","false"]) },
-    KeyDef { key: "scheduler.cron",     description: "Cron expression",             valid_values: None },
-    KeyDef { key: "pipeline.max_concurrent_repos", description: "Concurrent repos", valid_values: None },
-    KeyDef { key: "multi_model.enabled",description: "Multi-model routing enabled", valid_values: Some(&["true","false"]) },
-    KeyDef { key: "multi_model.strategy",description: "Routing strategy",           valid_values: Some(&["performance","balanced","economy"]) },
+    KeyDef {
+        key: "llm.provider",
+        description: "LLM provider",
+        valid_values: Some(&["gemini", "vertex", "openai", "anthropic", "ollama"]),
+    },
+    KeyDef {
+        key: "llm.model",
+        description: "Model name",
+        valid_values: None,
+    },
+    KeyDef {
+        key: "llm.api_key",
+        description: "LLM API key (secret)",
+        valid_values: None,
+    },
+    KeyDef {
+        key: "llm.vertex_project",
+        description: "Vertex AI GCP project ID",
+        valid_values: None,
+    },
+    KeyDef {
+        key: "llm.vertex_location",
+        description: "Vertex AI location",
+        valid_values: None,
+    },
+    KeyDef {
+        key: "llm.temperature",
+        description: "LLM temperature (0.0-1.0)",
+        valid_values: None,
+    },
+    KeyDef {
+        key: "llm.max_tokens",
+        description: "Max tokens per LLM call",
+        valid_values: None,
+    },
+    KeyDef {
+        key: "github.token",
+        description: "GitHub personal access token",
+        valid_values: None,
+    },
+    KeyDef {
+        key: "github.max_prs_per_day",
+        description: "Max PRs to create per day",
+        valid_values: None,
+    },
+    KeyDef {
+        key: "github.max_repos_per_run",
+        description: "Max repos per pipeline run",
+        valid_values: None,
+    },
+    KeyDef {
+        key: "github.rate_limit_buffer",
+        description: "GitHub rate limit buffer",
+        valid_values: None,
+    },
+    KeyDef {
+        key: "web.host",
+        description: "Web dashboard host",
+        valid_values: None,
+    },
+    KeyDef {
+        key: "web.port",
+        description: "Web dashboard port",
+        valid_values: None,
+    },
+    KeyDef {
+        key: "web.enabled",
+        description: "Web dashboard enabled",
+        valid_values: Some(&["true", "false"]),
+    },
+    KeyDef {
+        key: "scheduler.enabled",
+        description: "Scheduler enabled",
+        valid_values: Some(&["true", "false"]),
+    },
+    KeyDef {
+        key: "scheduler.cron",
+        description: "Cron expression",
+        valid_values: None,
+    },
+    KeyDef {
+        key: "pipeline.max_concurrent_repos",
+        description: "Concurrent repos",
+        valid_values: None,
+    },
+    KeyDef {
+        key: "multi_model.enabled",
+        description: "Multi-model routing enabled",
+        valid_values: Some(&["true", "false"]),
+    },
+    KeyDef {
+        key: "multi_model.strategy",
+        description: "Routing strategy",
+        valid_values: Some(&["performance", "balanced", "economy"]),
+    },
 ];
 
 const SECRET_KEYS: &[&str] = &["llm.api_key", "github.token", "web.webhook_secret"];
@@ -82,7 +158,10 @@ pub fn set_config_value(path: &Path, key: &str, value: &str) -> anyhow::Result<(
     let content = if path.exists() {
         std::fs::read_to_string(path)?
     } else {
-        anyhow::bail!("Config not found at {}. Run 'contribai init' first.", path.display())
+        anyhow::bail!(
+            "Config not found at {}. Run 'contribai init' first.",
+            path.display()
+        )
     };
 
     let (updated, found) = replace_yaml_value(&content, key, value);
@@ -114,10 +193,14 @@ pub fn set_config_value(path: &Path, key: &str, value: &str) -> anyhow::Result<(
 
 /// Show all known config keys with current values from file.
 pub fn list_config(path: &Path) -> anyhow::Result<()> {
-    let content = std::fs::read_to_string(path)
-        .unwrap_or_default();
+    let content = std::fs::read_to_string(path).unwrap_or_default();
 
-    println!("\n  {:<35} {:<20} {}", style("Key").bold(), style("Value").bold(), style("Description").bold());
+    println!(
+        "\n  {:<35} {:<20} {}",
+        style("Key").bold(),
+        style("Value").bold(),
+        style("Description").bold()
+    );
     println!("  {}", "─".repeat(85));
 
     for def in KNOWN_KEYS {
@@ -132,7 +215,12 @@ pub fn list_config(path: &Path) -> anyhow::Result<()> {
         } else {
             style(display).cyan().to_string()
         };
-        println!("  {:<35} {:<30} {}", def.key, val_styled, style(def.description).dim());
+        println!(
+            "  {:<35} {:<30} {}",
+            def.key,
+            val_styled,
+            style(def.description).dim()
+        );
     }
     println!();
     Ok(())
@@ -189,7 +277,11 @@ pub fn extract_yaml_value(yaml: &str, dotted_key: &str) -> Option<String> {
 /// Returns (new_content, was_found).
 pub fn replace_yaml_value(yaml: &str, dotted_key: &str, new_value: &str) -> (String, bool) {
     let parts: Vec<&str> = dotted_key.splitn(2, '.').collect();
-    let section = if parts.len() > 1 { Some(parts[0]) } else { None };
+    let section = if parts.len() > 1 {
+        Some(parts[0])
+    } else {
+        None
+    };
     let subkey = *parts.last().unwrap();
     let subkey_prefix = format!("{}:", subkey);
 
@@ -209,7 +301,11 @@ pub fn replace_yaml_value(yaml: &str, dotted_key: &str, new_value: &str) -> (Str
                 }
                 result_lines.push(line.to_string());
                 continue;
-            } else if indent == 0 && !trimmed.is_empty() && !trimmed.starts_with('#') && trimmed != format!("{}:", sec) {
+            } else if indent == 0
+                && !trimmed.is_empty()
+                && !trimmed.starts_with('#')
+                && trimmed != format!("{}:", sec)
+            {
                 in_section = false;
                 result_lines.push(line.to_string());
                 continue;
@@ -233,8 +329,12 @@ pub fn replace_yaml_value(yaml: &str, dotted_key: &str, new_value: &str) -> (Str
 
 fn format_yaml_value(v: &str) -> String {
     // Booleans and numbers: no quotes
-    if v == "true" || v == "false" { return v.to_string(); }
-    if v.parse::<f64>().is_ok() { return v.to_string(); }
+    if v == "true" || v == "false" {
+        return v.to_string();
+    }
+    if v.parse::<f64>().is_ok() {
+        return v.to_string();
+    }
     // Strings: wrap in quotes
     format!("\"{}\"", v)
 }
@@ -257,9 +357,7 @@ fn leading_spaces(line: &str) -> usize {
 
 fn strip_quotes(s: &str) -> &str {
     let s = s.trim();
-    if (s.starts_with('"') && s.ends_with('"'))
-        || (s.starts_with('\'') && s.ends_with('\''))
-    {
+    if (s.starts_with('"') && s.ends_with('"')) || (s.starts_with('\'') && s.ends_with('\'')) {
         &s[1..s.len() - 1]
     } else {
         s

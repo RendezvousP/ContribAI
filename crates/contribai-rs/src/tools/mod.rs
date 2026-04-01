@@ -15,11 +15,19 @@ pub struct ToolResult {
 
 impl ToolResult {
     pub fn ok(data: String) -> Self {
-        Self { success: true, data: Some(data), error: None }
+        Self {
+            success: true,
+            data: Some(data),
+            error: None,
+        }
     }
 
     pub fn err(error: String) -> Self {
-        Self { success: false, data: None, error: Some(error) }
+        Self {
+            success: false,
+            data: None,
+            error: Some(error),
+        }
     }
 }
 
@@ -38,11 +46,17 @@ pub struct ToolRegistry {
 
 impl ToolRegistry {
     pub fn new() -> Self {
-        Self { tools: HashMap::new() }
+        Self {
+            tools: HashMap::new(),
+        }
     }
 
     pub fn register(&mut self, tool: Box<dyn Tool>) {
-        info!(name = tool.name(), desc = tool.description(), "Registered tool");
+        info!(
+            name = tool.name(),
+            desc = tool.description(),
+            "Registered tool"
+        );
         self.tools.insert(tool.name().to_string(), tool);
     }
 
@@ -66,15 +80,13 @@ impl ToolRegistry {
 
     pub async fn execute(&self, name: &str, params: HashMap<String, String>) -> ToolResult {
         match self.tools.get(name) {
-            Some(tool) => {
-                match tool.execute(params).await {
-                    result if result.success => result,
-                    result => {
-                        error!(tool = name, error = ?result.error, "Tool failed");
-                        result
-                    }
+            Some(tool) => match tool.execute(params).await {
+                result if result.success => result,
+                result => {
+                    error!(tool = name, error = ?result.error, "Tool failed");
+                    result
                 }
-            }
+            },
             None => ToolResult::err(format!("Tool not found: {name}")),
         }
     }
@@ -100,8 +112,12 @@ mod tests {
 
     #[async_trait::async_trait]
     impl Tool for MockTool {
-        fn name(&self) -> &str { "mock" }
-        fn description(&self) -> &str { "A mock tool" }
+        fn name(&self) -> &str {
+            "mock"
+        }
+        fn description(&self) -> &str {
+            "A mock tool"
+        }
         async fn execute(&self, _params: HashMap<String, String>) -> ToolResult {
             ToolResult::ok("mock result".into())
         }
@@ -111,8 +127,12 @@ mod tests {
 
     #[async_trait::async_trait]
     impl Tool for FailTool {
-        fn name(&self) -> &str { "fail" }
-        fn description(&self) -> &str { "Always fails" }
+        fn name(&self) -> &str {
+            "fail"
+        }
+        fn description(&self) -> &str {
+            "Always fails"
+        }
         async fn execute(&self, _params: HashMap<String, String>) -> ToolResult {
             ToolResult::err("intentional failure".into())
         }

@@ -257,8 +257,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_async_retry_succeeds_first_try() {
-        let result: Result<i32, String> =
-            async_retry(|| async { Ok(42) }, 3, 0.01, 1.0, 2.0).await;
+        let result: Result<i32, String> = async_retry(|| async { Ok(42) }, 3, 0.01, 1.0, 2.0).await;
         assert_eq!(result.unwrap(), 42);
     }
 

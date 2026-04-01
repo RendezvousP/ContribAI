@@ -60,10 +60,7 @@ impl RepoProfile {
             }
         }
         if self.avg_review_hours > 0.0 {
-            parts.push(format!(
-                "- Avg review time: {:.0}h",
-                self.avg_review_hours
-            ));
+            parts.push(format!("- Avg review time: {:.0}h", self.avg_review_hours));
         }
 
         parts.join("\n")
@@ -73,22 +70,71 @@ impl RepoProfile {
 /// PR type classification keywords.
 fn type_keywords() -> HashMap<&'static str, Vec<&'static str>> {
     let mut m = HashMap::new();
-    m.insert("security", vec!["security", "vulnerability", "cve", "xss", "injection", "auth"]);
-    m.insert("bug_fix", vec!["fix", "bug", "crash", "error", "issue", "broken", "null", "none"]);
-    m.insert("test", vec!["test", "coverage", "spec", "unittest", "pytest"]);
-    m.insert("docs", vec!["doc", "readme", "changelog", "comment", "docstring"]);
-    m.insert("refactor", vec!["refactor", "cleanup", "simplify", "extract", "reorganize"]);
-    m.insert("performance", vec!["perf", "performance", "speed", "optimize", "cache", "memory"]);
-    m.insert("feature", vec!["add", "feat", "feature", "support", "implement", "new"]);
-    m.insert("ci", vec!["ci", "workflow", "github action", "pipeline", "build"]);
-    m.insert("deps", vec!["bump", "upgrade", "dependency", "update", "version"]);
+    m.insert(
+        "security",
+        vec![
+            "security",
+            "vulnerability",
+            "cve",
+            "xss",
+            "injection",
+            "auth",
+        ],
+    );
+    m.insert(
+        "bug_fix",
+        vec![
+            "fix", "bug", "crash", "error", "issue", "broken", "null", "none",
+        ],
+    );
+    m.insert(
+        "test",
+        vec!["test", "coverage", "spec", "unittest", "pytest"],
+    );
+    m.insert(
+        "docs",
+        vec!["doc", "readme", "changelog", "comment", "docstring"],
+    );
+    m.insert(
+        "refactor",
+        vec!["refactor", "cleanup", "simplify", "extract", "reorganize"],
+    );
+    m.insert(
+        "performance",
+        vec![
+            "perf",
+            "performance",
+            "speed",
+            "optimize",
+            "cache",
+            "memory",
+        ],
+    );
+    m.insert(
+        "feature",
+        vec!["add", "feat", "feature", "support", "implement", "new"],
+    );
+    m.insert(
+        "ci",
+        vec!["ci", "workflow", "github action", "pipeline", "build"],
+    );
+    m.insert(
+        "deps",
+        vec!["bump", "upgrade", "dependency", "update", "version"],
+    );
     m
 }
 
 fn high_value_labels() -> HashSet<&'static str> {
     [
-        "good first issue", "help wanted", "bug", "enhancement",
-        "easy", "beginner", "low-hanging fruit", "contributions welcome",
+        "good first issue",
+        "help wanted",
+        "bug",
+        "enhancement",
+        "easy",
+        "beginner",
+        "low-hanging fruit",
+        "contributions welcome",
         "hacktoberfest",
     ]
     .into_iter()
@@ -117,8 +163,18 @@ impl<'a> RepoIntelligence<'a> {
         // 1. Analyze recently merged PRs
         match self.analyze_pr_history(owner, repo).await {
             Ok((merged, rejected, avg)) => {
-                profile.preferred_types = merged.iter().cloned().collect::<HashSet<_>>().into_iter().collect();
-                profile.rejected_types = rejected.iter().cloned().collect::<HashSet<_>>().into_iter().collect();
+                profile.preferred_types = merged
+                    .iter()
+                    .cloned()
+                    .collect::<HashSet<_>>()
+                    .into_iter()
+                    .collect();
+                profile.rejected_types = rejected
+                    .iter()
+                    .cloned()
+                    .collect::<HashSet<_>>()
+                    .into_iter()
+                    .collect();
                 profile.merged_pr_types = merged;
                 profile.avg_review_hours = avg;
             }

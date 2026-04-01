@@ -148,14 +148,14 @@ impl EventBus {
     }
 
     /// Get event history, optionally filtered.
-    pub async fn history(
-        &self,
-        event_type: Option<EventType>,
-        limit: usize,
-    ) -> Vec<Event> {
+    pub async fn history(&self, event_type: Option<EventType>, limit: usize) -> Vec<Event> {
         let history = self.history.read().await;
         let events: Vec<_> = if let Some(et) = event_type {
-            history.iter().filter(|e| e.event_type == et).cloned().collect()
+            history
+                .iter()
+                .filter(|e| e.event_type == et)
+                .cloned()
+                .collect()
         } else {
             history.clone()
         };
@@ -224,8 +224,7 @@ mod tests {
     #[tokio::test]
     async fn test_event_bus_emit_and_history() {
         let bus = EventBus::default();
-        let event = Event::new(EventType::PipelineStart, "test")
-            .with_data("dry_run", false);
+        let event = Event::new(EventType::PipelineStart, "test").with_data("dry_run", false);
 
         bus.emit(event).await;
 
@@ -239,8 +238,10 @@ mod tests {
         let bus = EventBus::default();
 
         bus.emit(Event::new(EventType::PipelineStart, "test")).await;
-        bus.emit(Event::new(EventType::DiscoveryStart, "test")).await;
-        bus.emit(Event::new(EventType::PipelineComplete, "test")).await;
+        bus.emit(Event::new(EventType::DiscoveryStart, "test"))
+            .await;
+        bus.emit(Event::new(EventType::PipelineComplete, "test"))
+            .await;
 
         let all = bus.history(None, 100).await;
         assert_eq!(all.len(), 3);
@@ -253,11 +254,8 @@ mod tests {
     async fn test_event_bus_max_history() {
         let bus = EventBus::new(5);
         for i in 0..10 {
-            bus.emit(
-                Event::new(EventType::AnalysisStart, "test")
-                    .with_data("i", i as i64),
-            )
-            .await;
+            bus.emit(Event::new(EventType::AnalysisStart, "test").with_data("i", i as i64))
+                .await;
         }
 
         let history = bus.history(None, 100).await;
@@ -271,7 +269,11 @@ mod tests {
             .with_data("repo", "test/repo");
 
         let json = event.to_json();
-        assert!(json.contains("pr_created") || json.contains("pr.created") || json.contains("PrCreated"));
+        assert!(
+            json.contains("pr_created")
+                || json.contains("pr.created")
+                || json.contains("PrCreated")
+        );
         assert!(json.contains("42"));
     }
 

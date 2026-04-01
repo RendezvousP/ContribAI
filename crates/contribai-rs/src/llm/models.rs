@@ -66,7 +66,11 @@ impl ModelSpec {
 
     pub fn cost_efficiency(&self) -> f64 {
         let total_cost = self.input_cost + self.output_cost;
-        if total_cost == 0.0 { 100.0 } else { self.overall_score() / total_cost }
+        if total_cost == 0.0 {
+            100.0
+        } else {
+            self.overall_score() / total_cost
+        }
     }
 }
 
@@ -81,8 +85,17 @@ pub fn gemini_3_1_pro() -> ModelSpec {
         max_output: 65_536,
         input_cost: 1.25,
         output_cost: 10.0,
-        coding: 98, analysis: 97, reasoning: 98, speed: 55, multimodal: 95,
-        best_for: vec![TaskType::CodeGen, TaskType::Analysis, TaskType::Planning, TaskType::Review],
+        coding: 98,
+        analysis: 97,
+        reasoning: 98,
+        speed: 55,
+        multimodal: 95,
+        best_for: vec![
+            TaskType::CodeGen,
+            TaskType::Analysis,
+            TaskType::Planning,
+            TaskType::Review,
+        ],
         description: "Most powerful agentic and coding model.".into(),
     }
 }
@@ -96,8 +109,17 @@ pub fn gemini_3_flash() -> ModelSpec {
         max_output: 65_536,
         input_cost: 0.15,
         output_cost: 0.60,
-        coding: 88, analysis: 87, reasoning: 85, speed: 85, multimodal: 80,
-        best_for: vec![TaskType::Analysis, TaskType::Review, TaskType::QuickFix, TaskType::CodeGen],
+        coding: 88,
+        analysis: 87,
+        reasoning: 85,
+        speed: 85,
+        multimodal: 80,
+        best_for: vec![
+            TaskType::Analysis,
+            TaskType::Review,
+            TaskType::QuickFix,
+            TaskType::CodeGen,
+        ],
         description: "Agentic workhorse — near-Pro intelligence with balanced cost.".into(),
     }
 }
@@ -111,7 +133,11 @@ pub fn gemini_3_1_flash_lite() -> ModelSpec {
         max_output: 65_536,
         input_cost: 0.02,
         output_cost: 0.10,
-        coding: 72, analysis: 70, reasoning: 68, speed: 95, multimodal: 60,
+        coding: 72,
+        analysis: 70,
+        reasoning: 68,
+        speed: 95,
+        multimodal: 60,
         best_for: vec![TaskType::Bulk, TaskType::Docs, TaskType::QuickFix],
         description: "High-volume, cost-sensitive.".into(),
     }
@@ -126,7 +152,11 @@ pub fn gemini_2_5_flash() -> ModelSpec {
         max_output: 65_536,
         input_cost: 0.15,
         output_cost: 0.60,
-        coding: 82, analysis: 80, reasoning: 78, speed: 88, multimodal: 70,
+        coding: 82,
+        analysis: 80,
+        reasoning: 78,
+        speed: 88,
+        multimodal: 70,
         best_for: vec![TaskType::Analysis, TaskType::Review, TaskType::Docs],
         description: "Previous-gen Flash, still solid.".into(),
     }
@@ -182,13 +212,11 @@ pub fn get_cheapest_capable(task_type: TaskType, min_score: f64) -> Option<Model
         .into_iter()
         .filter(|m| m.overall_score() >= min_score)
         .collect();
-    capable
-        .into_iter()
-        .min_by(|a, b| {
-            let cost_a = a.input_cost + a.output_cost;
-            let cost_b = b.input_cost + b.output_cost;
-            cost_a.partial_cmp(&cost_b).unwrap()
-        })
+    capable.into_iter().min_by(|a, b| {
+        let cost_a = a.input_cost + a.output_cost;
+        let cost_b = b.input_cost + b.output_cost;
+        cost_a.partial_cmp(&cost_b).unwrap()
+    })
 }
 
 #[cfg(test)]

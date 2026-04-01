@@ -92,7 +92,9 @@ impl HumanReviewer {
 /// Print a formatted summary of the contribution to stdout.
 fn display_contribution(contribution: &Contribution, finding: &Finding, repo_name: &str) {
     println!();
-    println!("==============================  Human Review Required  ==============================");
+    println!(
+        "==============================  Human Review Required  =============================="
+    );
     println!();
     println!("  Repo       : {}", repo_name);
     println!("  Title      : {}", contribution.title);
@@ -142,7 +144,9 @@ fn display_contribution(contribution: &Contribution, finding: &Finding, repo_nam
     }
 
     println!("  Create this PR?  [y]es  [n]o  [s]kip");
-    println!("-------------------------------------------------------------------------------------");
+    println!(
+        "-------------------------------------------------------------------------------------"
+    );
 }
 
 /// Block on stdin and return the user's decision.
@@ -197,9 +201,7 @@ async fn prompt_decision() -> Result<ReviewDecision> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::models::{
-        Contribution, ContributionType, FileChange, Finding, Severity,
-    };
+    use crate::core::models::{Contribution, ContributionType, FileChange, Finding, Severity};
     use chrono::Utc;
 
     // ── Fixtures ─────────────────────────────────────────────────────────────

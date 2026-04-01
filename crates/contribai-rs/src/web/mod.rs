@@ -56,7 +56,10 @@ fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
         return false;
     }
     // XOR every byte pair; if any differ the accumulator is non-zero.
-    a.iter().zip(b.iter()).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
+    a.iter()
+        .zip(b.iter())
+        .fold(0u8, |acc, (x, y)| acc | (x ^ y))
+        == 0
 }
 
 /// Verify API key from `X-API-Key` header or `?api_key=` query param.
@@ -200,11 +203,7 @@ pub async fn get_stats(State(state): State<AppState>) -> impl IntoResponse {
         .count();
     let ci_passed = prs
         .iter()
-        .filter(|p| {
-            p.get("status")
-                .map(|s| s == "ci_passed")
-                .unwrap_or(false)
-        })
+        .filter(|p| p.get("status").map(|s| s == "ci_passed").unwrap_or(false))
         .count();
 
     // Unique repos
@@ -231,8 +230,7 @@ pub async fn get_repos(
         .memory
         .get_prs(None, params.limit * 3)
         .unwrap_or_default();
-    let mut repo_map: std::collections::HashMap<String, usize> =
-        std::collections::HashMap::new();
+    let mut repo_map: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
     for pr in &prs {
         if let Some(repo) = pr.get("repo") {
             *repo_map.entry(repo.clone()).or_insert(0) += 1;
@@ -355,8 +353,7 @@ pub async fn github_webhook(
         .unwrap_or("unknown");
 
     // Parse JSON body; reject malformed payloads
-    let payload: Value =
-        serde_json::from_slice(&body).map_err(|_| StatusCode::BAD_REQUEST)?;
+    let payload: Value = serde_json::from_slice(&body).map_err(|_| StatusCode::BAD_REQUEST)?;
 
     let action = payload
         .get("action")
@@ -416,20 +413,16 @@ pub async fn run_server(
 
     let router = build_router(state);
     let addr = format!("{}:{}", host, port);
-    let listener = tokio::net::TcpListener::bind(&addr)
-        .await
-        .map_err(|e| {
-            crate::core::error::ContribError::Config(format!("Cannot bind to {}: {}", addr, e))
-        })?;
+    let listener = tokio::net::TcpListener::bind(&addr).await.map_err(|e| {
+        crate::core::error::ContribError::Config(format!("Cannot bind to {}: {}", addr, e))
+    })?;
 
     info!(address = %addr, "Web dashboard running");
     println!("  Dashboard: http://{}", addr);
 
     axum::serve(listener, router)
         .await
-        .map_err(|e| {
-            crate::core::error::ContribError::Config(format!("Server error: {}", e))
-        })?;
+        .map_err(|e| crate::core::error::ContribError::Config(format!("Server error: {}", e)))?;
 
     Ok(())
 }
@@ -699,7 +692,11 @@ mod tests {
         let hex_sig = format!("sha256={}", hex::encode(result));
 
         // Verify with a different payload
-        assert!(!verify_webhook_signature(b"tampered payload", &hex_sig, secret));
+        assert!(!verify_webhook_signature(
+            b"tampered payload",
+            &hex_sig,
+            secret
+        ));
     }
 
     // ── router construction ───────────────────────────────────────────────────

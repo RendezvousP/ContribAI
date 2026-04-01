@@ -46,7 +46,10 @@ fn language_images() -> HashMap<&'static str, &'static str> {
 /// Language → syntax check command.
 fn syntax_check_commands() -> HashMap<&'static str, &'static str> {
     [
-        ("python", r#"python -c "import ast, sys; ast.parse(sys.stdin.read())""#),
+        (
+            "python",
+            r#"python -c "import ast, sys; ast.parse(sys.stdin.read())""#,
+        ),
         ("javascript", "node --check /tmp/code.js"),
         ("typescript", "node --check /tmp/code.ts"),
         ("go", "gofmt -e /tmp/code.go"),
@@ -154,9 +157,7 @@ impl Sandbox {
         }
 
         let start = Instant::now();
-        let result = self
-            .run_docker_check(image, &temp_path, language)
-            .await;
+        let result = self.run_docker_check(image, &temp_path, language).await;
 
         // Cleanup
         let _ = std::fs::remove_file(&temp_path);
@@ -250,12 +251,10 @@ impl Sandbox {
         let start = Instant::now();
 
         // Basic syntax check: balanced brackets + indentation
-        let opens: usize = code.matches('(').count()
-            + code.matches('[').count()
-            + code.matches('{').count();
-        let closes: usize = code.matches(')').count()
-            + code.matches(']').count()
-            + code.matches('}').count();
+        let opens: usize =
+            code.matches('(').count() + code.matches('[').count() + code.matches('{').count();
+        let closes: usize =
+            code.matches(')').count() + code.matches(']').count() + code.matches('}').count();
 
         if (opens as i64 - closes as i64).unsigned_abs() > 3 {
             return SandboxResult {

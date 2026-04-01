@@ -139,7 +139,6 @@ enum Commands {
     },
 
     // ── Interactive / setup commands ──────────────────────────────────────────
-
     /// Interactive setup wizard — configure provider, API keys, GitHub auth
     Init {
         /// Output config file path
@@ -172,7 +171,6 @@ enum Commands {
     ConfigList,
 
     // ── Parity commands (matches Python CLI) ──────────────────────────────────
-
     /// Show contribution leaderboard and merge rate statistics
     Leaderboard {
         /// Max entries to show
@@ -263,7 +261,11 @@ impl Cli {
                 println!("   {}: {}", "Event log".dimmed(), log_path.display());
 
                 let pipeline = contribai::orchestrator::pipeline::ContribPipeline::new(
-                    &config, &github, llm.as_ref(), &memory, &event_bus,
+                    &config,
+                    &github,
+                    llm.as_ref(),
+                    &memory,
+                    &event_bus,
                 );
 
                 let result = pipeline.run(None, dry_run).await?;
@@ -305,7 +307,11 @@ impl Cli {
                     .spawn_logger(&event_bus);
 
                 let pipeline = contribai::orchestrator::pipeline::ContribPipeline::new(
-                    &config, &github, llm.as_ref(), &memory, &event_bus,
+                    &config,
+                    &github,
+                    llm.as_ref(),
+                    &memory,
+                    &event_bus,
                 );
 
                 // Run pipeline for each round
@@ -345,7 +351,11 @@ impl Cli {
                 println!(
                     "👁  {} {}",
                     "Patrol mode".cyan().bold(),
-                    if dry_run { "(DRY RUN)".yellow().to_string() } else { "(LIVE)".green().to_string() }
+                    if dry_run {
+                        "(DRY RUN)".yellow().to_string()
+                    } else {
+                        "(LIVE)".green().to_string()
+                    }
                 );
 
                 let github = create_github(&config)?;
@@ -366,15 +376,33 @@ impl Cli {
                     .collect();
 
                 let mut patrol = contribai::pr::patrol::PrPatrol::new(&github, llm.as_ref());
-                let result = patrol.patrol(&pr_values, dry_run).await
+                let result = patrol
+                    .patrol(&pr_values, dry_run)
+                    .await
                     .map_err(|e| anyhow::anyhow!("{}", e))?;
 
                 println!("\n{}", "━".repeat(50).dimmed());
-                println!("  {} PRs checked:  {}", "📊".bold(), result.prs_checked.to_string().cyan());
-                println!("  {} Fixes pushed: {}", "🔧".bold(), result.fixes_pushed.to_string().green());
-                println!("  {} Replies sent: {}", "💬".bold(), result.replies_sent.to_string().cyan());
+                println!(
+                    "  {} PRs checked:  {}",
+                    "📊".bold(),
+                    result.prs_checked.to_string().cyan()
+                );
+                println!(
+                    "  {} Fixes pushed: {}",
+                    "🔧".bold(),
+                    result.fixes_pushed.to_string().green()
+                );
+                println!(
+                    "  {} Replies sent: {}",
+                    "💬".bold(),
+                    result.replies_sent.to_string().cyan()
+                );
                 if result.prs_skipped > 0 {
-                    println!("  {} Skipped:     {}", "⏭".bold(), result.prs_skipped.to_string().yellow());
+                    println!(
+                        "  {} Skipped:     {}",
+                        "⏭".bold(),
+                        result.prs_skipped.to_string().yellow()
+                    );
                 }
                 Ok(())
             }
@@ -386,7 +414,11 @@ impl Cli {
                 println!(
                     "🎯 Targeting: {} {}",
                     url.cyan().bold(),
-                    if dry_run { "(DRY RUN)".yellow().to_string() } else { "(LIVE)".green().to_string() }
+                    if dry_run {
+                        "(DRY RUN)".yellow().to_string()
+                    } else {
+                        "(LIVE)".green().to_string()
+                    }
                 );
                 println!();
 
@@ -396,7 +428,11 @@ impl Cli {
                 let event_bus = contribai::core::events::EventBus::default();
 
                 let pipeline = contribai::orchestrator::pipeline::ContribPipeline::new(
-                    &config, &github, llm.as_ref(), &memory, &event_bus,
+                    &config,
+                    &github,
+                    llm.as_ref(),
+                    &memory,
+                    &event_bus,
                 );
 
                 let result = pipeline.run(None, dry_run).await?;
@@ -428,11 +464,19 @@ impl Cli {
                 println!("{}", "━".repeat(40).dimmed());
                 println!(
                     "  Repos analyzed:  {}",
-                    stats.get("total_repos_analyzed").unwrap_or(&0).to_string().cyan()
+                    stats
+                        .get("total_repos_analyzed")
+                        .unwrap_or(&0)
+                        .to_string()
+                        .cyan()
                 );
                 println!(
                     "  PRs submitted:   {}",
-                    stats.get("total_prs_submitted").unwrap_or(&0).to_string().cyan()
+                    stats
+                        .get("total_prs_submitted")
+                        .unwrap_or(&0)
+                        .to_string()
+                        .cyan()
                 );
                 println!(
                     "  PRs merged:      {}",
@@ -499,10 +543,7 @@ impl Cli {
                 print_banner();
                 let config = load_config(self.config.as_deref())?;
 
-                println!(
-                    "🔍 Analyzing (dry-run): {}",
-                    url.cyan().bold()
-                );
+                println!("🔍 Analyzing (dry-run): {}", url.cyan().bold());
                 println!();
 
                 let github = create_github(&config)?;
@@ -511,7 +552,11 @@ impl Cli {
                 let event_bus = contribai::core::events::EventBus::default();
 
                 let pipeline = contribai::orchestrator::pipeline::ContribPipeline::new(
-                    &config, &github, llm.as_ref(), &memory, &event_bus,
+                    &config,
+                    &github,
+                    llm.as_ref(),
+                    &memory,
+                    &event_bus,
                 );
 
                 // Always dry_run=true — analysis only, no PRs created
@@ -528,7 +573,11 @@ impl Cli {
                 println!(
                     "🧩 Solving issues in: {} {}",
                     url.cyan().bold(),
-                    if dry_run { "(DRY RUN)".yellow().to_string() } else { "(LIVE)".green().to_string() }
+                    if dry_run {
+                        "(DRY RUN)".yellow().to_string()
+                    } else {
+                        "(LIVE)".green().to_string()
+                    }
                 );
                 println!();
 
@@ -562,7 +611,11 @@ impl Cli {
                 let issues = solver.fetch_solvable_issues(&repo, 10, 3).await;
 
                 if issues.is_empty() {
-                    println!("  {} No solvable issues found in {}", "⚠️".bold(), full_name.cyan());
+                    println!(
+                        "  {} No solvable issues found in {}",
+                        "⚠️".bold(),
+                        full_name.cyan()
+                    );
                     return Ok(());
                 }
 
@@ -661,8 +714,16 @@ impl Cli {
                 let token_display = if config.github.token.is_empty() {
                     "(not set)".red().to_string()
                 } else {
-                    let last4: String = config.github.token.chars().rev().take(4).collect::<String>()
-                        .chars().rev().collect();
+                    let last4: String = config
+                        .github
+                        .token
+                        .chars()
+                        .rev()
+                        .take(4)
+                        .collect::<String>()
+                        .chars()
+                        .rev()
+                        .collect();
                     format!("****{}", last4).yellow().to_string()
                 };
                 println!("  {:<18} {}", "GitHub token:".dimmed(), token_display);
@@ -706,7 +767,11 @@ impl Cli {
                     "  {:<18} {} (enabled: {})",
                     "Scheduler:".dimmed(),
                     config.scheduler.cron.cyan(),
-                    if config.scheduler.enabled { "yes".green().to_string() } else { "no".red().to_string() }
+                    if config.scheduler.enabled {
+                        "yes".green().to_string()
+                    } else {
+                        "no".red().to_string()
+                    }
                 );
 
                 Ok(())
@@ -716,10 +781,7 @@ impl Cli {
                 print_banner();
                 let config = load_config(self.config.as_deref())?;
 
-                println!(
-                    "⏰ Starting scheduler with cron: {}",
-                    cron.cyan().bold()
-                );
+                println!("⏰ Starting scheduler with cron: {}", cron.cyan().bold());
                 println!("   Press Ctrl+C to stop.\n");
 
                 // Use Arc so the closure can own config data and re-create clients each run
@@ -729,43 +791,49 @@ impl Cli {
                 let scheduler = contribai::scheduler::ContribScheduler::new(&cron, true)
                     .map_err(|e| anyhow::anyhow!("{}", e))?;
 
-                scheduler.start(move || {
-                    let cfg = config_clone.clone();
-                    async move {
-                        let github = match contribai::github::client::GitHubClient::new(
-                            &cfg.github.token,
-                            cfg.github.rate_limit_buffer,
-                        ) {
-                            Ok(g) => g,
-                            Err(e) => return Err(e.to_string()),
-                        };
-                        let llm = match contribai::llm::provider::create_llm_provider(&cfg.llm) {
-                            Ok(l) => l,
-                            Err(e) => return Err(e.to_string()),
-                        };
-                        let db_path = cfg.storage.resolved_db_path();
-                        let memory = match contribai::orchestrator::memory::Memory::open(&db_path) {
-                            Ok(m) => m,
-                            Err(e) => return Err(e.to_string()),
-                        };
-                        let event_bus = contribai::core::events::EventBus::default();
-                        let pipeline = contribai::orchestrator::pipeline::ContribPipeline::new(
-                            &cfg, &github, llm.as_ref(), &memory, &event_bus,
-                        );
-                        pipeline
-                            .run(None, cfg.pipeline.dry_run)
-                            .await
-                            .map(|_| ())
-                            .map_err(|e| e.to_string())
-                    }
-                })
-                .await;
+                scheduler
+                    .start(move || {
+                        let cfg = config_clone.clone();
+                        async move {
+                            let github = match contribai::github::client::GitHubClient::new(
+                                &cfg.github.token,
+                                cfg.github.rate_limit_buffer,
+                            ) {
+                                Ok(g) => g,
+                                Err(e) => return Err(e.to_string()),
+                            };
+                            let llm = match contribai::llm::provider::create_llm_provider(&cfg.llm)
+                            {
+                                Ok(l) => l,
+                                Err(e) => return Err(e.to_string()),
+                            };
+                            let db_path = cfg.storage.resolved_db_path();
+                            let memory =
+                                match contribai::orchestrator::memory::Memory::open(&db_path) {
+                                    Ok(m) => m,
+                                    Err(e) => return Err(e.to_string()),
+                                };
+                            let event_bus = contribai::core::events::EventBus::default();
+                            let pipeline = contribai::orchestrator::pipeline::ContribPipeline::new(
+                                &cfg,
+                                &github,
+                                llm.as_ref(),
+                                &memory,
+                                &event_bus,
+                            );
+                            pipeline
+                                .run(None, cfg.pipeline.dry_run)
+                                .await
+                                .map(|_| ())
+                                .map_err(|e| e.to_string())
+                        }
+                    })
+                    .await;
 
                 Ok(())
             }
 
             // ── Interactive / setup commands ───────────────────────────────────
-
             Commands::Init { output } => {
                 let out_path = output.as_deref();
                 match wizard::run_init_wizard(out_path.map(std::path::Path::new))? {
@@ -775,9 +843,7 @@ impl Cli {
                 Ok(())
             }
 
-            Commands::Login => {
-                run_login_check(self.config.as_deref()).await
-            }
+            Commands::Login => run_login_check(self.config.as_deref()).await,
 
             Commands::ConfigGet { key } => {
                 let path = config_editor::resolve_config_path(self.config.as_deref());
@@ -795,26 +861,15 @@ impl Cli {
             }
 
             // ── Parity commands ───────────────────────────────────────────────
+            Commands::Leaderboard { limit } => run_leaderboard(self.config.as_deref(), limit),
 
-            Commands::Leaderboard { limit } => {
-                run_leaderboard(self.config.as_deref(), limit)
-            }
+            Commands::Models { task } => run_models(task.as_deref()),
 
-            Commands::Models { task } => {
-                run_models(task.as_deref())
-            }
+            Commands::NotifyTest => run_notify_test(self.config.as_deref()).await,
 
-            Commands::NotifyTest => {
-                run_notify_test(self.config.as_deref()).await
-            }
+            Commands::Cleanup { yes } => run_cleanup(self.config.as_deref(), yes).await,
 
-            Commands::Cleanup { yes } => {
-                run_cleanup(self.config.as_deref(), yes).await
-            }
-
-            Commands::Templates { r#type } => {
-                run_templates(r#type.as_deref())
-            }
+            Commands::Templates { r#type } => run_templates(r#type.as_deref()),
 
             Commands::Profile { name, dry_run } => {
                 print_banner();
@@ -822,9 +877,7 @@ impl Cli {
                 run_profile(&name, dry_run, &config).await
             }
 
-            Commands::SystemStatus => {
-                run_system_status(self.config.as_deref()).await
-            }
+            Commands::SystemStatus => run_system_status(self.config.as_deref()).await,
 
             Commands::Interactive => {
                 let config = load_config(self.config.as_deref())?;
@@ -838,8 +891,8 @@ impl Cli {
 
 /// Show arrow-key menu when no subcommand given.
 fn run_interactive_menu() -> anyhow::Result<Commands> {
-    use dialoguer::Select;
     use console::style;
+    use dialoguer::Select;
 
     println!();
     println!(
@@ -883,31 +936,49 @@ fn run_interactive_menu() -> anyhow::Result<Commands> {
     println!();
 
     Ok(match selection {
-        0  => Commands::Interactive,
-        1  => Commands::Run { language: None, stars: None, dry_run: false },
-        2  => {
+        0 => Commands::Interactive,
+        1 => Commands::Run {
+            language: None,
+            stars: None,
+            dry_run: false,
+        },
+        2 => {
             let url: String = dialoguer::Input::new()
                 .with_prompt("Repository URL")
                 .interact_text()?;
-            Commands::Target { url, dry_run: false }
+            Commands::Target {
+                url,
+                dry_run: false,
+            }
         }
-        3  => {
+        3 => {
             let url: String = dialoguer::Input::new()
                 .with_prompt("Repository URL")
                 .interact_text()?;
             Commands::Analyze { url }
         }
-        4  => {
+        4 => {
             let url: String = dialoguer::Input::new()
                 .with_prompt("Repository URL")
                 .interact_text()?;
-            Commands::Solve { url, dry_run: false }
+            Commands::Solve {
+                url,
+                dry_run: false,
+            }
         }
-        5  => Commands::Patrol { dry_run: false },
-        6  => Commands::Hunt { rounds: 5, delay: 30, language: None, dry_run: false },
-        7  => Commands::Stats,
-        8  => Commands::Leaderboard { limit: 20 },
-        9  => Commands::Status { filter: None, limit: 20 },
+        5 => Commands::Patrol { dry_run: false },
+        6 => Commands::Hunt {
+            rounds: 5,
+            delay: 30,
+            language: None,
+            dry_run: false,
+        },
+        7 => Commands::Stats,
+        8 => Commands::Leaderboard { limit: 20 },
+        9 => Commands::Status {
+            filter: None,
+            limit: 20,
+        },
         10 => Commands::Models { task: None },
         11 => Commands::Templates { r#type: None },
         12 => {
@@ -915,10 +986,16 @@ fn run_interactive_menu() -> anyhow::Result<Commands> {
                 .with_prompt("Profile name (or 'list' to see all)")
                 .default("list".into())
                 .interact_text()?;
-            Commands::Profile { name, dry_run: false }
+            Commands::Profile {
+                name,
+                dry_run: false,
+            }
         }
         13 => Commands::Cleanup { yes: false },
-        14 => Commands::WebServer { host: "127.0.0.1".into(), port: 8787 },
+        14 => Commands::WebServer {
+            host: "127.0.0.1".into(),
+            port: 8787,
+        },
         15 => Commands::SystemStatus,
         16 => Commands::NotifyTest,
         17 => Commands::Config,
@@ -933,16 +1010,16 @@ fn run_interactive_menu() -> anyhow::Result<Commands> {
         }
         19 => Commands::Login,
         20 => Commands::Init { output: None },
-        _  => std::process::exit(0),
+        _ => std::process::exit(0),
     })
 }
 
 // ── Login check ───────────────────────────────────────────────────────────────
 
 async fn run_login_check(config_path: Option<&str>) -> anyhow::Result<()> {
+    use crate::cli::wizard::{mask_secret, LlmChoice};
     use console::style;
-    use dialoguer::{Select, Password, Input};
-    use crate::cli::wizard::{LlmChoice, mask_secret};
+    use dialoguer::{Input, Password, Select};
 
     print_banner();
 
@@ -955,8 +1032,16 @@ async fn run_login_check(config_path: Option<&str>) -> anyhow::Result<()> {
 
         // ── GitHub status ────────────────────────────────────────────────────
         let _gh_configured = if !config.github.token.is_empty() {
-            let last4: String = config.github.token.chars().rev().take(4)
-                .collect::<String>().chars().rev().collect();
+            let last4: String = config
+                .github
+                .token
+                .chars()
+                .rev()
+                .take(4)
+                .collect::<String>()
+                .chars()
+                .rev()
+                .collect();
             println!(
                 "  {:<18} {} (token: ****{})",
                 style("GitHub:").bold(),
@@ -998,13 +1083,23 @@ async fn run_login_check(config_path: Option<&str>) -> anyhow::Result<()> {
         match config.llm.provider.as_str() {
             "gemini" | "openai" | "anthropic" => {
                 if !config.llm.api_key.is_empty() {
-                    let last4: String = config.llm.api_key.chars().rev().take(4)
-                        .collect::<String>().chars().rev().collect();
+                    let last4: String = config
+                        .llm
+                        .api_key
+                        .chars()
+                        .rev()
+                        .take(4)
+                        .collect::<String>()
+                        .chars()
+                        .rev()
+                        .collect();
                     println!(
                         "  {:<18} {} ({} / {} key: ****{})",
                         style("LLM:").bold(),
                         style("✅ API key set").green(),
-                        config.llm.provider, config.llm.model, last4
+                        config.llm.provider,
+                        config.llm.model,
+                        last4
                     );
                 } else {
                     println!(
@@ -1014,7 +1109,7 @@ async fn run_login_check(config_path: Option<&str>) -> anyhow::Result<()> {
                         match config.llm.provider.as_str() {
                             "openai" => "OPENAI_API_KEY",
                             "anthropic" => "ANTHROPIC_API_KEY",
-                            _ => "GEMINI_API_KEY"
+                            _ => "GEMINI_API_KEY",
                         }
                     );
                 }
@@ -1073,8 +1168,11 @@ async fn run_login_check(config_path: Option<&str>) -> anyhow::Result<()> {
                 }
             }
             p => {
-                println!("  {:<18} {}", style("LLM:").bold(),
-                    style(format!("⚪ Provider: {}", p)).dim());
+                println!(
+                    "  {:<18} {}",
+                    style("LLM:").bold(),
+                    style(format!("⚪ Provider: {}", p)).dim()
+                );
             }
         }
 
@@ -1127,9 +1225,7 @@ async fn run_login_check(config_path: Option<&str>) -> anyhow::Result<()> {
                         );
                         let proj: String = Input::new()
                             .with_prompt("Google Cloud Project ID")
-                            .default(
-                                std::env::var("GOOGLE_CLOUD_PROJECT").unwrap_or_default()
-                            )
+                            .default(std::env::var("GOOGLE_CLOUD_PROJECT").unwrap_or_default())
                             .interact_text()?;
                         (String::new(), proj)
                     }
@@ -1147,7 +1243,10 @@ async fn run_login_check(config_path: Option<&str>) -> anyhow::Result<()> {
                             LlmChoice::Anthropic => "https://console.anthropic.com/",
                             _ => "",
                         };
-                        println!("  {}", style(format!("Get your key at: {}", env_hint)).dim());
+                        println!(
+                            "  {}",
+                            style(format!("Get your key at: {}", env_hint)).dim()
+                        );
                         let key: String = Password::new()
                             .with_prompt(format!("{} API Key (hidden)", choice.provider_name()))
                             .allow_empty_password(true)
@@ -1194,11 +1293,17 @@ async fn run_login_check(config_path: Option<&str>) -> anyhow::Result<()> {
                         println!("  {} API key: {}", style("🔑").dim(), mask_secret(&api_key));
                     }
                     if !vertex_project.is_empty() {
-                        println!("  {} Project: {}", style("☁️").dim(), style(&vertex_project).cyan());
+                        println!(
+                            "  {} Project: {}",
+                            style("☁️").dim(),
+                            style(&vertex_project).cyan()
+                        );
                     }
                 } else {
-                    println!("  {} Could not find llm section in config — run 'contribai init' first",
-                        style("⚠️").yellow());
+                    println!(
+                        "  {} Could not find llm section in config — run 'contribai init' first",
+                        style("⚠️").yellow()
+                    );
                 }
                 println!();
             }
@@ -1206,7 +1311,10 @@ async fn run_login_check(config_path: Option<&str>) -> anyhow::Result<()> {
                 // Set GitHub token
                 println!();
                 println!("{}", style("  Set GitHub Token").yellow().bold());
-                println!("  {}", style("Create at: https://github.com/settings/tokens").dim());
+                println!(
+                    "  {}",
+                    style("Create at: https://github.com/settings/tokens").dim()
+                );
                 println!("  {}", style("Scopes needed: repo, workflow").dim());
 
                 let token: String = Password::new()
@@ -1225,11 +1333,16 @@ async fn run_login_check(config_path: Option<&str>) -> anyhow::Result<()> {
                             }
                         }
                         std::fs::write(config_file, lines.join("\n") + "\n")?;
-                        println!("  {} GitHub token saved to {}", style("✅").green(),
-                            style(config_file).cyan());
+                        println!(
+                            "  {} GitHub token saved to {}",
+                            style("✅").green(),
+                            style(config_file).cyan()
+                        );
                     } else {
-                        println!("  {} No config.yaml found — run 'contribai init' first",
-                            style("⚠️").yellow());
+                        println!(
+                            "  {} No config.yaml found — run 'contribai init' first",
+                            style("⚠️").yellow()
+                        );
                     }
                 } else {
                     println!("  {} Skipped (empty token)", style("⚪").dim());
@@ -1298,12 +1411,20 @@ fn run_leaderboard(config_path: Option<&str>, limit: usize) -> anyhow::Result<()
         let mut repo_map: std::collections::HashMap<String, (u32, u32, u32)> =
             std::collections::HashMap::new();
         for pr in &prs {
-            let repo = pr.get("repo").map(|s| s.as_str()).unwrap_or("unknown").to_string();
+            let repo = pr
+                .get("repo")
+                .map(|s| s.as_str())
+                .unwrap_or("unknown")
+                .to_string();
             let status = pr.get("status").map(|s| s.as_str()).unwrap_or("unknown");
             let entry = repo_map.entry(repo).or_insert((0, 0, 0));
             entry.0 += 1;
-            if status == "merged" { entry.1 += 1; }
-            if status == "closed" { entry.2 += 1; }
+            if status == "merged" {
+                entry.1 += 1;
+            }
+            if status == "closed" {
+                entry.2 += 1;
+            }
         }
 
         let mut repos: Vec<(String, u32, u32, u32)> = repo_map
@@ -1313,7 +1434,14 @@ fn run_leaderboard(config_path: Option<&str>, limit: usize) -> anyhow::Result<()
         repos.sort_by(|a, b| b.2.cmp(&a.2).then(b.1.cmp(&a.1)));
         repos.truncate(limit);
 
-        println!("{:<32} {:>6} {:>8} {:>8} {:>6}", "Repo".bold(), "Total".bold(), "Merged".bold(), "Closed".bold(), "Rate".bold());
+        println!(
+            "{:<32} {:>6} {:>8} {:>8} {:>6}",
+            "Repo".bold(),
+            "Total".bold(),
+            "Merged".bold(),
+            "Closed".bold(),
+            "Rate".bold()
+        );
         println!("{}", "─".repeat(64).dimmed());
 
         for (repo, total, merged, closed) in &repos {
@@ -1361,22 +1489,118 @@ fn run_models(task_filter: Option<&str>) -> anyhow::Result<()> {
     }
 
     const MODELS: &[ModelDef] = &[
-        ModelDef { name: "gemini-2.5-pro",             provider: "google", tier: "PRO",   coding: 9, analysis: 9, speed: 6, cost: "$0.00/$0.01", best_for: "analysis, code" },
-        ModelDef { name: "gemini-2.5-flash",           provider: "google", tier: "FLASH", coding: 8, analysis: 8, speed: 9, cost: "$0.00/$0.00", best_for: "analysis, review, docs" },
-        ModelDef { name: "gemini-2.0-flash-exp",       provider: "google", tier: "FLASH", coding: 8, analysis: 7, speed: 9, cost: "$0.00/$0.00", best_for: "code, review" },
-        ModelDef { name: "gemini-1.5-flash",           provider: "google", tier: "FLASH", coding: 7, analysis: 7, speed: 9, cost: "$0.00/$0.00", best_for: "docs, review" },
-        ModelDef { name: "gpt-4o",                     provider: "openai", tier: "PRO",   coding: 9, analysis: 8, speed: 7, cost: "$2.50/$10.0", best_for: "code, analysis" },
-        ModelDef { name: "gpt-4o-mini",                provider: "openai", tier: "LITE",  coding: 7, analysis: 7, speed: 9, cost: "$0.15/$0.60", best_for: "docs, review" },
-        ModelDef { name: "claude-3-5-sonnet-20241022", provider: "anthropic", tier: "PRO", coding: 9, analysis: 9, speed: 7, cost: "$3.00/$15.0", best_for: "code, analysis" },
-        ModelDef { name: "claude-3-haiku-20240307",    provider: "anthropic", tier: "LITE",coding: 7, analysis: 7, speed: 9, cost: "$0.25/$1.25", best_for: "docs, review" },
-        ModelDef { name: "llama3",                     provider: "ollama", tier: "LOCAL", coding: 7, analysis: 6, speed: 8, cost: "free",          best_for: "all (offline)" },
-        ModelDef { name: "codestral",                  provider: "ollama", tier: "LOCAL", coding: 9, analysis: 7, speed: 8, cost: "free",          best_for: "code (offline)" },
+        ModelDef {
+            name: "gemini-2.5-pro",
+            provider: "google",
+            tier: "PRO",
+            coding: 9,
+            analysis: 9,
+            speed: 6,
+            cost: "$0.00/$0.01",
+            best_for: "analysis, code",
+        },
+        ModelDef {
+            name: "gemini-2.5-flash",
+            provider: "google",
+            tier: "FLASH",
+            coding: 8,
+            analysis: 8,
+            speed: 9,
+            cost: "$0.00/$0.00",
+            best_for: "analysis, review, docs",
+        },
+        ModelDef {
+            name: "gemini-2.0-flash-exp",
+            provider: "google",
+            tier: "FLASH",
+            coding: 8,
+            analysis: 7,
+            speed: 9,
+            cost: "$0.00/$0.00",
+            best_for: "code, review",
+        },
+        ModelDef {
+            name: "gemini-1.5-flash",
+            provider: "google",
+            tier: "FLASH",
+            coding: 7,
+            analysis: 7,
+            speed: 9,
+            cost: "$0.00/$0.00",
+            best_for: "docs, review",
+        },
+        ModelDef {
+            name: "gpt-4o",
+            provider: "openai",
+            tier: "PRO",
+            coding: 9,
+            analysis: 8,
+            speed: 7,
+            cost: "$2.50/$10.0",
+            best_for: "code, analysis",
+        },
+        ModelDef {
+            name: "gpt-4o-mini",
+            provider: "openai",
+            tier: "LITE",
+            coding: 7,
+            analysis: 7,
+            speed: 9,
+            cost: "$0.15/$0.60",
+            best_for: "docs, review",
+        },
+        ModelDef {
+            name: "claude-3-5-sonnet-20241022",
+            provider: "anthropic",
+            tier: "PRO",
+            coding: 9,
+            analysis: 9,
+            speed: 7,
+            cost: "$3.00/$15.0",
+            best_for: "code, analysis",
+        },
+        ModelDef {
+            name: "claude-3-haiku-20240307",
+            provider: "anthropic",
+            tier: "LITE",
+            coding: 7,
+            analysis: 7,
+            speed: 9,
+            cost: "$0.25/$1.25",
+            best_for: "docs, review",
+        },
+        ModelDef {
+            name: "llama3",
+            provider: "ollama",
+            tier: "LOCAL",
+            coding: 7,
+            analysis: 6,
+            speed: 8,
+            cost: "free",
+            best_for: "all (offline)",
+        },
+        ModelDef {
+            name: "codestral",
+            provider: "ollama",
+            tier: "LOCAL",
+            coding: 9,
+            analysis: 7,
+            speed: 8,
+            cost: "free",
+            best_for: "code (offline)",
+        },
     ];
 
     let filter_lower = task_filter.map(|s| s.to_lowercase());
-    let models: Vec<&ModelDef> = MODELS.iter().filter(|m| {
-        filter_lower.as_ref().map(|f| m.best_for.contains(f.as_str())).unwrap_or(true)
-    }).collect();
+    let models: Vec<&ModelDef> = MODELS
+        .iter()
+        .filter(|m| {
+            filter_lower
+                .as_ref()
+                .map(|f| m.best_for.contains(f.as_str()))
+                .unwrap_or(true)
+        })
+        .collect();
 
     print_banner();
 
@@ -1388,18 +1612,23 @@ fn run_models(task_filter: Option<&str>) -> anyhow::Result<()> {
     println!("{}", "━".repeat(95).dimmed());
     println!(
         "  {:<30} {:<10} {:<8} {:>5} {:>6} {:>6}  {:<14} {}",
-        "Model".bold(), "Provider".bold(), "Tier".bold(),
-        "Code".bold(), "Analy".bold(), "Speed".bold(),
-        "Cost (in/out)".bold(), "Best For".bold()
+        "Model".bold(),
+        "Provider".bold(),
+        "Tier".bold(),
+        "Code".bold(),
+        "Analy".bold(),
+        "Speed".bold(),
+        "Cost (in/out)".bold(),
+        "Best For".bold()
     );
     println!("{}", "─".repeat(95).dimmed());
 
     for m in &models {
         let tier_colored = match m.tier {
-            "PRO"   => m.tier.red().to_string(),
+            "PRO" => m.tier.red().to_string(),
             "FLASH" => m.tier.yellow().to_string(),
             "LOCAL" => m.tier.green().to_string(),
-            _       => m.tier.dimmed().to_string(),
+            _ => m.tier.dimmed().to_string(),
         };
         println!(
             "  {:<30} {:<10} {:<16} {:>5} {:>6} {:>6}  {:<14} {}",
@@ -1416,10 +1645,14 @@ fn run_models(task_filter: Option<&str>) -> anyhow::Result<()> {
 
     println!();
     println!("{}", "Default Task Assignments:".bold());
-    println!("  {:<20} {}", "analysis:".dimmed(),  "gemini-2.5-flash".cyan());
-    println!("  {:<20} {}", "code:".dimmed(),       "gemini-2.5-pro".cyan());
-    println!("  {:<20} {}", "review:".dimmed(),     "gemini-2.5-flash".cyan());
-    println!("  {:<20} {}", "docs:".dimmed(),       "gemini-2.5-flash".cyan());
+    println!(
+        "  {:<20} {}",
+        "analysis:".dimmed(),
+        "gemini-2.5-flash".cyan()
+    );
+    println!("  {:<20} {}", "code:".dimmed(), "gemini-2.5-pro".cyan());
+    println!("  {:<20} {}", "review:".dimmed(), "gemini-2.5-flash".cyan());
+    println!("  {:<20} {}", "docs:".dimmed(), "gemini-2.5-flash".cyan());
     println!();
     Ok(())
 }
@@ -1432,19 +1665,29 @@ async fn run_notify_test(config_path: Option<&str>) -> anyhow::Result<()> {
     let config = load_config(config_path)?;
     let n = &config.notifications;
 
-    let slack   = n.slack_webhook.as_deref().unwrap_or("");
+    let slack = n.slack_webhook.as_deref().unwrap_or("");
     let discord = n.discord_webhook.as_deref().unwrap_or("");
     let tg_token = n.telegram_token.as_deref().unwrap_or("");
-    let tg_chat  = n.telegram_chat_id.as_deref().unwrap_or("");
+    let tg_chat = n.telegram_chat_id.as_deref().unwrap_or("");
 
     let channels_configured = !slack.is_empty() || !discord.is_empty() || !tg_token.is_empty();
 
     if !channels_configured {
-        println!("  {} No notification channels configured in config.yaml", "⚠️".yellow());
+        println!(
+            "  {} No notification channels configured in config.yaml",
+            "⚠️".yellow()
+        );
         println!("  Set one of these first:");
-        println!("    {}", "contribai config-set notifications.slack_webhook https://hooks.slack.com/services/...".cyan());
+        println!(
+            "    {}",
+            "contribai config-set notifications.slack_webhook https://hooks.slack.com/services/..."
+                .cyan()
+        );
         println!("    {}", "contribai config-set notifications.discord_webhook https://discord.com/api/webhooks/...".cyan());
-        println!("    {}", "contribai config-set notifications.telegram_token <bot-token>".cyan());
+        println!(
+            "    {}",
+            "contribai config-set notifications.telegram_token <bot-token>".cyan()
+        );
         return Ok(());
     }
 
@@ -1460,7 +1703,10 @@ async fn run_notify_test(config_path: Option<&str>) -> anyhow::Result<()> {
 
     // ── Slack ──────────────────────────────────────────────────────────────
     if !slack.is_empty() {
-        print!("  🔔 Slack:   {} ... ", slack.chars().take(40).collect::<String>().dimmed());
+        print!(
+            "  🔔 Slack:   {} ... ",
+            slack.chars().take(40).collect::<String>().dimmed()
+        );
         std::io::Write::flush(&mut std::io::stdout()).ok();
 
         let payload = serde_json::json!({
@@ -1523,7 +1769,11 @@ async fn run_notify_test(config_path: Option<&str>) -> anyhow::Result<()> {
                 }
                 Ok(resp) => {
                     let txt = resp.text().await.unwrap_or_default();
-                    println!("{}: {}", "❌ failed".red(), txt.chars().take(80).collect::<String>());
+                    println!(
+                        "{}: {}",
+                        "❌ failed".red(),
+                        txt.chars().take(80).collect::<String>()
+                    );
                 }
                 Err(e) => {
                     println!("{}: {}", "❌ error".red(), e);
@@ -1533,10 +1783,12 @@ async fn run_notify_test(config_path: Option<&str>) -> anyhow::Result<()> {
     }
 
     println!();
-    println!("  {} All channels tested. Check your apps!", "🎉".green().bold());
+    println!(
+        "  {} All channels tested. Check your apps!",
+        "🎉".green().bold()
+    );
     Ok(())
 }
-
 
 // ── Cleanup ───────────────────────────────────────────────────────────────────
 
@@ -1548,19 +1800,27 @@ async fn run_cleanup(config_path: Option<&str>, yes: bool) -> anyhow::Result<()>
     let config = load_config(config_path)?;
     let memory = create_memory(&config)?;
 
-    println!("{}", "🧹 Cleanup — Forks created by ContribAI".cyan().bold());
+    println!(
+        "{}",
+        "🧹 Cleanup — Forks created by ContribAI".cyan().bold()
+    );
     println!("{}", "━".repeat(60).dimmed());
     println!();
 
     let all_prs = memory.get_prs(None, 1000)?;
     if all_prs.is_empty() {
-        println!("  {} No PRs in database. Nothing to clean up.", "💡".dimmed());
+        println!(
+            "  {} No PRs in database. Nothing to clean up.",
+            "💡".dimmed()
+        );
         return Ok(());
     }
 
     // Group by fork
-    let mut forks: std::collections::HashMap<String, Vec<std::collections::HashMap<String, String>>> =
-        std::collections::HashMap::new();
+    let mut forks: std::collections::HashMap<
+        String,
+        Vec<std::collections::HashMap<String, String>>,
+    > = std::collections::HashMap::new();
 
     for pr in &all_prs {
         let fork = pr.get("fork").map(|s| s.as_str()).unwrap_or("");
@@ -1570,11 +1830,17 @@ async fn run_cleanup(config_path: Option<&str>, yes: bool) -> anyhow::Result<()>
     }
 
     if forks.is_empty() {
-        println!("  {} No forks recorded in database (PRs may be direct branch contributions).", "💡".dimmed());
+        println!(
+            "  {} No forks recorded in database (PRs may be direct branch contributions).",
+            "💡".dimmed()
+        );
         return Ok(());
     }
 
-    println!("  Found {} fork(s) in database\n", forks.len().to_string().cyan());
+    println!(
+        "  Found {} fork(s) in database\n",
+        forks.len().to_string().cyan()
+    );
 
     let mut safe_to_delete: Vec<String> = vec![];
     let mut has_open: Vec<String> = vec![];
@@ -1588,10 +1854,19 @@ async fn run_cleanup(config_path: Option<&str>, yes: bool) -> anyhow::Result<()>
 
         for pr in prs {
             let num = pr.get("pr_number").map(|s| s.as_str()).unwrap_or("?");
-            let title: String = pr.get("title")
-                .map(|s| s.as_str()).unwrap_or("").chars().take(50).collect();
+            let title: String = pr
+                .get("title")
+                .map(|s| s.as_str())
+                .unwrap_or("")
+                .chars()
+                .take(50)
+                .collect();
             let status = pr.get("status").map(|s| s.as_str()).unwrap_or("unknown");
-            let icon = match status { "merged" => "🟢", "open" => "🟡", _ => "🔴" };
+            let icon = match status {
+                "merged" => "🟢",
+                "open" => "🟡",
+                _ => "🔴",
+            };
             println!("     PR #{}: {} [{} {}]", num.cyan(), title, icon, status);
         }
 
@@ -1606,7 +1881,11 @@ async fn run_cleanup(config_path: Option<&str>, yes: bool) -> anyhow::Result<()>
 
     println!("{}", "━".repeat(60).dimmed());
     if !has_open.is_empty() {
-        println!("  {} {} fork(s) with open PRs (kept)", "⚠️".yellow(), has_open.len());
+        println!(
+            "  {} {} fork(s) with open PRs (kept)",
+            "⚠️".yellow(),
+            has_open.len()
+        );
     }
 
     if safe_to_delete.is_empty() {
@@ -1614,15 +1893,20 @@ async fn run_cleanup(config_path: Option<&str>, yes: bool) -> anyhow::Result<()>
         return Ok(());
     }
 
-    println!("  {} {} fork(s) safe to delete:", "✅".green(), safe_to_delete.len());
+    println!(
+        "  {} {} fork(s) safe to delete:",
+        "✅".green(),
+        safe_to_delete.len()
+    );
     for f in &safe_to_delete {
         println!("    - {}", f.cyan());
     }
 
-    let confirmed = yes || Confirm::new()
-        .with_prompt(format!("\n  🗑️  Delete {} fork(s)?", safe_to_delete.len()))
-        .default(false)
-        .interact()?;
+    let confirmed = yes
+        || Confirm::new()
+            .with_prompt(format!("\n  🗑️  Delete {} fork(s)?", safe_to_delete.len()))
+            .default(false)
+            .interact()?;
 
     if !confirmed {
         println!("  {}", "Cancelled.".dimmed());
@@ -1668,45 +1952,142 @@ fn run_templates(type_filter: Option<&str>) -> anyhow::Result<()> {
     }
 
     const TEMPLATES: &[TemplateDef] = &[
-        TemplateDef { name: "sql-injection-fix",      r#type: "security_fix",  severity: "critical", description: "Fix SQL injection vulnerabilities",               languages: "python, js, ts, go" },
-        TemplateDef { name: "xss-fix",                r#type: "security_fix",  severity: "high",     description: "Fix XSS vulnerabilities",                         languages: "js, ts" },
-        TemplateDef { name: "path-traversal-fix",     r#type: "security_fix",  severity: "high",     description: "Fix path traversal issues",                        languages: "python, go, rust" },
-        TemplateDef { name: "missing-docstrings",     r#type: "docs_improve",  severity: "low",      description: "Add missing docstrings to functions",              languages: "python" },
-        TemplateDef { name: "readme-badges",          r#type: "docs_improve",  severity: "low",      description: "Add CI/coverage badges to README",                 languages: "all" },
-        TemplateDef { name: "error-handling",         r#type: "code_quality",  severity: "medium",   description: "Improve error handling patterns",                  languages: "python, go, rust" },
-        TemplateDef { name: "add-type-hints",         r#type: "code_quality",  severity: "low",      description: "Add Python type hints",                            languages: "python" },
-        TemplateDef { name: "add-tests",              r#type: "code_quality",  severity: "medium",   description: "Add missing unit tests",                           languages: "python, js, ts, go" },
-        TemplateDef { name: "performance-cache",      r#type: "performance_opt",severity: "medium",  description: "Add caching to expensive operations",              languages: "python, go" },
-        TemplateDef { name: "refactor-long-fn",       r#type: "refactor",      severity: "low",      description: "Break up overly long functions",                   languages: "python, js, ts" },
-        TemplateDef { name: "dependency-update",      r#type: "security_fix",  severity: "medium",   description: "Update vulnerable dependencies",                   languages: "all" },
-        TemplateDef { name: "add-logging",            r#type: "code_quality",  severity: "low",      description: "Add structured logging",                           languages: "python, go, rust" },
-        TemplateDef { name: "issue-fix",              r#type: "feature_add",   severity: "medium",   description: "Fix a GitHub issue based on repro steps",         languages: "all" },
-        TemplateDef { name: "ui-accessibility",       r#type: "ui_ux_fix",     severity: "medium",   description: "Fix accessibility issues (aria, contrast, focus)", languages: "js, ts" },
+        TemplateDef {
+            name: "sql-injection-fix",
+            r#type: "security_fix",
+            severity: "critical",
+            description: "Fix SQL injection vulnerabilities",
+            languages: "python, js, ts, go",
+        },
+        TemplateDef {
+            name: "xss-fix",
+            r#type: "security_fix",
+            severity: "high",
+            description: "Fix XSS vulnerabilities",
+            languages: "js, ts",
+        },
+        TemplateDef {
+            name: "path-traversal-fix",
+            r#type: "security_fix",
+            severity: "high",
+            description: "Fix path traversal issues",
+            languages: "python, go, rust",
+        },
+        TemplateDef {
+            name: "missing-docstrings",
+            r#type: "docs_improve",
+            severity: "low",
+            description: "Add missing docstrings to functions",
+            languages: "python",
+        },
+        TemplateDef {
+            name: "readme-badges",
+            r#type: "docs_improve",
+            severity: "low",
+            description: "Add CI/coverage badges to README",
+            languages: "all",
+        },
+        TemplateDef {
+            name: "error-handling",
+            r#type: "code_quality",
+            severity: "medium",
+            description: "Improve error handling patterns",
+            languages: "python, go, rust",
+        },
+        TemplateDef {
+            name: "add-type-hints",
+            r#type: "code_quality",
+            severity: "low",
+            description: "Add Python type hints",
+            languages: "python",
+        },
+        TemplateDef {
+            name: "add-tests",
+            r#type: "code_quality",
+            severity: "medium",
+            description: "Add missing unit tests",
+            languages: "python, js, ts, go",
+        },
+        TemplateDef {
+            name: "performance-cache",
+            r#type: "performance_opt",
+            severity: "medium",
+            description: "Add caching to expensive operations",
+            languages: "python, go",
+        },
+        TemplateDef {
+            name: "refactor-long-fn",
+            r#type: "refactor",
+            severity: "low",
+            description: "Break up overly long functions",
+            languages: "python, js, ts",
+        },
+        TemplateDef {
+            name: "dependency-update",
+            r#type: "security_fix",
+            severity: "medium",
+            description: "Update vulnerable dependencies",
+            languages: "all",
+        },
+        TemplateDef {
+            name: "add-logging",
+            r#type: "code_quality",
+            severity: "low",
+            description: "Add structured logging",
+            languages: "python, go, rust",
+        },
+        TemplateDef {
+            name: "issue-fix",
+            r#type: "feature_add",
+            severity: "medium",
+            description: "Fix a GitHub issue based on repro steps",
+            languages: "all",
+        },
+        TemplateDef {
+            name: "ui-accessibility",
+            r#type: "ui_ux_fix",
+            severity: "medium",
+            description: "Fix accessibility issues (aria, contrast, focus)",
+            languages: "js, ts",
+        },
     ];
 
-    let templates: Vec<&TemplateDef> = TEMPLATES.iter().filter(|t| {
-        type_filter.map(|f| t.r#type == f || t.r#type.contains(f)).unwrap_or(true)
-    }).collect();
+    let templates: Vec<&TemplateDef> = TEMPLATES
+        .iter()
+        .filter(|t| {
+            type_filter
+                .map(|f| t.r#type == f || t.r#type.contains(f))
+                .unwrap_or(true)
+        })
+        .collect();
 
     print_banner();
     println!("{}", "📋 Contribution Templates".cyan().bold());
     println!("{}", "━".repeat(100).dimmed());
 
     if templates.is_empty() {
-        println!("  {} No templates match filter '{}'", "⚠️".yellow(), type_filter.unwrap_or(""));
+        println!(
+            "  {} No templates match filter '{}'",
+            "⚠️".yellow(),
+            type_filter.unwrap_or("")
+        );
     } else {
         println!(
             "  {:<25} {:<18} {:<10} {:<38} {}",
-            "Name".bold(), "Type".bold(), "Severity".bold(), "Description".bold(), "Languages".bold()
+            "Name".bold(),
+            "Type".bold(),
+            "Severity".bold(),
+            "Description".bold(),
+            "Languages".bold()
         );
         println!("{}", "─".repeat(100).dimmed());
 
         for t in &templates {
             let sev_colored = match t.severity {
                 "critical" => t.severity.red().bold().to_string(),
-                "high"     => t.severity.red().to_string(),
-                "medium"   => t.severity.yellow().to_string(),
-                _          => t.severity.dimmed().to_string(),
+                "high" => t.severity.red().to_string(),
+                "medium" => t.severity.yellow().to_string(),
+                _ => t.severity.dimmed().to_string(),
             };
             println!(
                 "  {:<25} {:<18} {:<18} {:<38} {}",
@@ -1759,8 +2140,20 @@ const PROFILES: &[Profile] = &[
     Profile {
         name: "full-scan",
         description: "Run all analyzers with low threshold",
-        analyzers: &["security", "code_quality", "docs", "performance", "refactor"],
-        contribution_types: &["security_fix", "docs_improve", "code_quality", "performance_opt", "refactor"],
+        analyzers: &[
+            "security",
+            "code_quality",
+            "docs",
+            "performance",
+            "refactor",
+        ],
+        contribution_types: &[
+            "security_fix",
+            "docs_improve",
+            "code_quality",
+            "performance_opt",
+            "refactor",
+        ],
         severity_threshold: "low",
         max_prs_per_day: 20,
         max_repos: 20,
@@ -1791,7 +2184,10 @@ async fn run_profile(
         println!("{}", "━".repeat(70).dimmed());
         println!(
             "  {:<22} {:<35} {:<10} {}",
-            "Name".bold(), "Description".bold(), "Threshold".bold(), "Dry Run".bold()
+            "Name".bold(),
+            "Description".bold(),
+            "Threshold".bold(),
+            "Dry Run".bold()
         );
         println!("{}", "─".repeat(70).dimmed());
         for p in PROFILES {
@@ -1800,11 +2196,19 @@ async fn run_profile(
                 p.name.cyan(),
                 p.description.chars().take(35).collect::<String>(),
                 p.severity_threshold.yellow(),
-                if p.dry_run { "yes".green().to_string() } else { "no".dimmed().to_string() }
+                if p.dry_run {
+                    "yes".green().to_string()
+                } else {
+                    "no".dimmed().to_string()
+                }
             );
         }
         println!();
-        println!("  {} Use: {}", "→".dimmed(), "contribai profile <name>".cyan());
+        println!(
+            "  {} Use: {}",
+            "→".dimmed(),
+            "contribai profile <name>".cyan()
+        );
         return Ok(());
     }
 
@@ -1815,7 +2219,11 @@ async fn run_profile(
             anyhow::bail!(
                 "Profile '{}' not found. Available: {}",
                 name,
-                PROFILES.iter().map(|p| p.name).collect::<Vec<_>>().join(", ")
+                PROFILES
+                    .iter()
+                    .map(|p| p.name)
+                    .collect::<Vec<_>>()
+                    .join(", ")
             );
         }
     };
@@ -1830,7 +2238,10 @@ async fn run_profile(
     println!("  {}", profile.description.dimmed());
     println!("  Analyzers: {}", profile.analyzers.join(", ").yellow());
     println!("  Severity:  {}", profile.severity_threshold.yellow());
-    println!("  Max PRs/day: {}", profile.max_prs_per_day.to_string().cyan());
+    println!(
+        "  Max PRs/day: {}",
+        profile.max_prs_per_day.to_string().cyan()
+    );
     if effective_dry_run {
         println!("  {} DRY RUN mode", "[DRY RUN]".yellow().bold());
     }
@@ -1842,7 +2253,11 @@ async fn run_profile(
     let event_bus = contribai::core::events::EventBus::default();
 
     let pipeline = contribai::orchestrator::pipeline::ContribPipeline::new(
-        config, &github, llm.as_ref(), &memory, &event_bus,
+        config,
+        &github,
+        llm.as_ref(),
+        &memory,
+        &event_bus,
     );
 
     let result = pipeline.run(None, effective_dry_run).await?;
@@ -1871,17 +2286,31 @@ async fn run_system_status(config_path: Option<&str>) -> anyhow::Result<()> {
         .unwrap_or_else(|_| "not found".to_string());
 
     println!("{}", "  💾 Memory Database".bold());
-    println!("  {:<25} {}", "Path:".dimmed(), db_path.display().to_string().cyan());
+    println!(
+        "  {:<25} {}",
+        "Path:".dimmed(),
+        db_path.display().to_string().cyan()
+    );
     println!("  {:<25} {}", "Size:".dimmed(), db_size.cyan());
     println!(
         "  {:<25} {}",
         "Repos analyzed:".dimmed(),
-        stats.get("total_repos_analyzed").copied().unwrap_or(0).to_string().cyan()
+        stats
+            .get("total_repos_analyzed")
+            .copied()
+            .unwrap_or(0)
+            .to_string()
+            .cyan()
     );
     println!(
         "  {:<25} {}",
         "PRs submitted:".dimmed(),
-        stats.get("total_prs_submitted").copied().unwrap_or(0).to_string().cyan()
+        stats
+            .get("total_prs_submitted")
+            .copied()
+            .unwrap_or(0)
+            .to_string()
+            .cyan()
     );
     println!(
         "  {:<25} {}  {}  {}",
@@ -1893,7 +2322,8 @@ async fn run_system_status(config_path: Option<&str>) -> anyhow::Result<()> {
             let m = stats.get("prs_merged").copied().unwrap_or(0);
             let c = stats.get("prs_closed").copied().unwrap_or(0);
             t.saturating_sub(m + c)
-        }).yellow()
+        })
+        .yellow()
     );
     println!();
 
@@ -1907,7 +2337,11 @@ async fn run_system_status(config_path: Option<&str>) -> anyhow::Result<()> {
             .map(|s| s.lines().count())
             .unwrap_or(0);
         println!("{}", "  📋 Event Log".bold());
-        println!("  {:<25} {}", "Path:".dimmed(), events_path.display().to_string().cyan());
+        println!(
+            "  {:<25} {}",
+            "Path:".dimmed(),
+            events_path.display().to_string().cyan()
+        );
         println!("  {:<25} {}", "Events:".dimmed(), lines.to_string().cyan());
         println!();
     }
@@ -1916,32 +2350,57 @@ async fn run_system_status(config_path: Option<&str>) -> anyhow::Result<()> {
     println!("{}", "  🔑 GitHub API".bold());
     let github = create_github(&config);
     match github {
-        Ok(gh) => {
-            match gh.check_rate_limit().await {
-                Ok(info) => {
-                    let remaining = info.remaining;
-                    let color = if remaining > 1000 { "green" } else if remaining > 100 { "yellow" } else { "red" };
-                    let remaining_str = remaining.to_string();
-                    let displayed = match color {
-                        "green" => remaining_str.green().to_string(),
-                        "yellow" => remaining_str.yellow().to_string(),
-                        _ => remaining_str.red().to_string(),
-                    };
-                    println!("  {:<25} {} / {} requests remaining", "Rate limit:".dimmed(), displayed, info.limit);
-                }
-                Err(_) => println!("  {:<25} {}", "Rate limit:".dimmed(), "could not check".dimmed()),
+        Ok(gh) => match gh.check_rate_limit().await {
+            Ok(info) => {
+                let remaining = info.remaining;
+                let color = if remaining > 1000 {
+                    "green"
+                } else if remaining > 100 {
+                    "yellow"
+                } else {
+                    "red"
+                };
+                let remaining_str = remaining.to_string();
+                let displayed = match color {
+                    "green" => remaining_str.green().to_string(),
+                    "yellow" => remaining_str.yellow().to_string(),
+                    _ => remaining_str.red().to_string(),
+                };
+                println!(
+                    "  {:<25} {} / {} requests remaining",
+                    "Rate limit:".dimmed(),
+                    displayed,
+                    info.limit
+                );
             }
-        }
-        Err(_) => println!("  {:<25} {}", "Rate limit:".dimmed(), "token not configured".red()),
+            Err(_) => println!(
+                "  {:<25} {}",
+                "Rate limit:".dimmed(),
+                "could not check".dimmed()
+            ),
+        },
+        Err(_) => println!(
+            "  {:<25} {}",
+            "Rate limit:".dimmed(),
+            "token not configured".red()
+        ),
     }
     println!();
 
     // LLM provider
     println!("{}", "  🤖 LLM Provider".bold());
-    println!("  {:<25} {}", "Provider:".dimmed(), config.llm.provider.cyan());
+    println!(
+        "  {:<25} {}",
+        "Provider:".dimmed(),
+        config.llm.provider.cyan()
+    );
     println!("  {:<25} {}", "Model:".dimmed(), config.llm.model.cyan());
     if !config.llm.vertex_project.is_empty() {
-        println!("  {:<25} {}", "Vertex project:".dimmed(), config.llm.vertex_project.cyan());
+        println!(
+            "  {:<25} {}",
+            "Vertex project:".dimmed(),
+            config.llm.vertex_project.cyan()
+        );
     }
     println!();
 
@@ -1950,9 +2409,17 @@ async fn run_system_status(config_path: Option<&str>) -> anyhow::Result<()> {
     println!(
         "  {:<25} {}",
         "Status:".dimmed(),
-        if config.scheduler.enabled { "enabled".green().to_string() } else { "disabled".dimmed().to_string() }
+        if config.scheduler.enabled {
+            "enabled".green().to_string()
+        } else {
+            "disabled".dimmed().to_string()
+        }
     );
-    println!("  {:<25} {}", "Cron:".dimmed(), config.scheduler.cron.cyan());
+    println!(
+        "  {:<25} {}",
+        "Cron:".dimmed(),
+        config.scheduler.cron.cyan()
+    );
     println!();
 
     Ok(())
@@ -2032,14 +2499,11 @@ fn print_result(result: &contribai::orchestrator::pipeline::PipelineResult, dry_
     }
 }
 
-fn load_config(
-    path: Option<&str>,
-) -> anyhow::Result<contribai::core::config::ContribAIConfig> {
+fn load_config(path: Option<&str>) -> anyhow::Result<contribai::core::config::ContribAIConfig> {
     use contribai::core::config::ContribAIConfig;
 
     if let Some(p) = path {
-        ContribAIConfig::from_yaml(std::path::Path::new(p))
-            .map_err(|e| anyhow::anyhow!("{}", e))
+        ContribAIConfig::from_yaml(std::path::Path::new(p)).map_err(|e| anyhow::anyhow!("{}", e))
     } else {
         ContribAIConfig::load().map_err(|e| anyhow::anyhow!("{}", e))
     }
@@ -2061,16 +2525,14 @@ fn create_github(
 fn create_llm(
     config: &contribai::core::config::ContribAIConfig,
 ) -> anyhow::Result<Box<dyn contribai::llm::provider::LlmProvider>> {
-    contribai::llm::provider::create_llm_provider(&config.llm)
-        .map_err(|e| anyhow::anyhow!("{}", e))
+    contribai::llm::provider::create_llm_provider(&config.llm).map_err(|e| anyhow::anyhow!("{}", e))
 }
 
 fn create_memory(
     config: &contribai::core::config::ContribAIConfig,
 ) -> anyhow::Result<contribai::orchestrator::memory::Memory> {
     let db_path = config.storage.resolved_db_path();
-    contribai::orchestrator::memory::Memory::open(&db_path)
-        .map_err(|e| anyhow::anyhow!("{}", e))
+    contribai::orchestrator::memory::Memory::open(&db_path).map_err(|e| anyhow::anyhow!("{}", e))
 }
 
 /// Parse a GitHub URL into (owner, repo) tuple.

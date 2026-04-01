@@ -2,8 +2,8 @@
 //!
 //! Port from Python `llm/router.py`.
 
-use tracing::info;
 use std::collections::HashMap;
+use tracing::info;
 
 use super::models::*;
 
@@ -49,7 +49,10 @@ impl TaskRouter {
             CostStrategy::Economy => self.route_economy(task_type),
             CostStrategy::Balanced => self.route_balanced(task_type, complexity, file_count),
         };
-        *self.task_count.entry(decision.model.name.clone()).or_insert(0) += 1;
+        *self
+            .task_count
+            .entry(decision.model.name.clone())
+            .or_insert(0) += 1;
         info!(
             model = %decision.model.display_name,
             reason = %decision.reason,
@@ -70,8 +73,7 @@ impl TaskRouter {
     }
 
     fn route_economy(&self, task_type: TaskType) -> RoutingDecision {
-        let model = get_cheapest_capable(task_type, 60.0)
-            .unwrap_or_else(gemini_3_1_flash_lite);
+        let model = get_cheapest_capable(task_type, 60.0).unwrap_or_else(gemini_3_1_flash_lite);
         RoutingDecision {
             reason: format!("Economy mode: {}", model.display_name),
             fallback: Some(gemini_2_5_flash()),

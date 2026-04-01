@@ -26,11 +26,15 @@ impl AnalysisSkill {
 
         let lang_lower = language.to_lowercase();
         let lang_matches = self.languages.is_empty()
-            || self.languages.iter().any(|l| l.to_lowercase() == lang_lower);
+            || self
+                .languages
+                .iter()
+                .any(|l| l.to_lowercase() == lang_lower);
 
         // If this skill requires specific frameworks, they must be detected
         if !self.frameworks.is_empty() {
-            let fw_lower: HashSet<String> = self.frameworks.iter().map(|f| f.to_lowercase()).collect();
+            let fw_lower: HashSet<String> =
+                self.frameworks.iter().map(|f| f.to_lowercase()).collect();
             let fw_matches = frameworks_detected
                 .iter()
                 .any(|f| fw_lower.contains(&f.to_lowercase()));
@@ -63,7 +67,8 @@ pub fn builtin_skills() -> Vec<AnalysisSkill> {
         // Language-specific
         AnalysisSkill {
             name: "python_specific".into(),
-            description: "Python antipatterns: mutable defaults, bare except, f-string issues".into(),
+            description: "Python antipatterns: mutable defaults, bare except, f-string issues"
+                .into(),
             languages: vec!["python".into()],
             frameworks: vec![],
             priority: 3,
@@ -149,7 +154,8 @@ pub fn builtin_skills() -> Vec<AnalysisSkill> {
         },
         AnalysisSkill {
             name: "ui_ux".into(),
-            description: "Accessibility (a11y), responsive design, color contrast, ARIA labels".into(),
+            description: "Accessibility (a11y), responsive design, color contrast, ARIA labels"
+                .into(),
             languages: vec![],
             frameworks: vec![],
             priority: 5,
@@ -163,7 +169,8 @@ pub fn builtin_skills() -> Vec<AnalysisSkill> {
         },
         AnalysisSkill {
             name: "refactor".into(),
-            description: "Unused imports, dead code, overly complex functions, duplicated logic".into(),
+            description: "Unused imports, dead code, overly complex functions, duplicated logic"
+                .into(),
             languages: vec![],
             frameworks: vec![],
             priority: 5,

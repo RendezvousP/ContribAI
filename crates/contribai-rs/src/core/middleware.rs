@@ -202,7 +202,10 @@ impl Middleware for RetryMiddleware {
         let err_msg = format!(
             "All {} attempts failed: {}",
             self.max_retries,
-            last_error.as_ref().map(|e| e.to_string()).unwrap_or_default()
+            last_error
+                .as_ref()
+                .map(|e| e.to_string())
+                .unwrap_or_default()
         );
         ctx.errors.push(err_msg);
         Ok(ctx)

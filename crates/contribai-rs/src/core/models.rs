@@ -265,10 +265,7 @@ impl AnalysisResult {
 
     /// Filter findings by minimum severity.
     pub fn filter_by_severity(&self, min: Severity) -> Vec<&Finding> {
-        self.findings
-            .iter()
-            .filter(|f| f.severity >= min)
-            .collect()
+        self.findings.iter().filter(|f| f.severity >= min).collect()
     }
 }
 

@@ -173,7 +173,11 @@ impl StdioMcpClient {
     }
 
     /// Call a tool on the MCP server.
-    pub async fn call_tool(&mut self, name: &str, arguments: Value) -> Result<McpToolResult, String> {
+    pub async fn call_tool(
+        &mut self,
+        name: &str,
+        arguments: Value,
+    ) -> Result<McpToolResult, String> {
         let result = self
             .send_request(
                 "tools/call",
@@ -199,10 +203,7 @@ impl StdioMcpClient {
 
     /// Send a JSON-RPC request and wait for response.
     async fn send_request(&mut self, method: &str, params: Value) -> Result<Value, String> {
-        let proc = self
-            .process
-            .as_mut()
-            .ok_or("MCP server not connected")?;
+        let proc = self.process.as_mut().ok_or("MCP server not connected")?;
 
         let id = self.request_id.fetch_add(1, Ordering::Relaxed) + 1;
 
@@ -238,8 +239,8 @@ impl StdioMcpClient {
             .map_err(|_| format!("MCP request timed out after {:?}", self.timeout))?
             .map_err(|e| format!("Failed to read from MCP server: {e}"))?;
 
-        let response: JsonRpcResponse = serde_json::from_str(&line)
-            .map_err(|e| format!("Invalid JSON-RPC response: {e}"))?;
+        let response: JsonRpcResponse =
+            serde_json::from_str(&line).map_err(|e| format!("Invalid JSON-RPC response: {e}"))?;
 
         if let Some(err) = response.error {
             error!(message = %err.message, "MCP error");
@@ -251,10 +252,7 @@ impl StdioMcpClient {
 
     /// Send a JSON-RPC notification (no response expected).
     async fn send_notification(&mut self, method: &str, params: Value) -> Result<(), String> {
-        let proc = self
-            .process
-            .as_mut()
-            .ok_or("MCP server not connected")?;
+        let proc = self.process.as_mut().ok_or("MCP server not connected")?;
 
         let notification = serde_json::json!({
             "jsonrpc": "2.0",
@@ -316,15 +314,13 @@ mod tests {
 
     #[test]
     fn test_client_with_timeout() {
-        let client = StdioMcpClient::new(&["echo"])
-            .with_timeout(Duration::from_secs(10));
+        let client = StdioMcpClient::new(&["echo"]).with_timeout(Duration::from_secs(10));
         assert_eq!(client.timeout, Duration::from_secs(10));
     }
 
     #[test]
     fn test_client_with_env() {
-        let client = StdioMcpClient::new(&["echo"])
-            .with_env(vec![("KEY".into(), "val".into())]);
+        let client = StdioMcpClient::new(&["echo"]).with_env(vec![("KEY".into(), "val".into())]);
         assert_eq!(client.env.len(), 1);
     }
 }

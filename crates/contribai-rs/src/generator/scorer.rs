@@ -10,9 +10,8 @@ use tracing::info;
 
 use crate::core::models::Contribution;
 
-static RE_CONVENTIONAL_COMMIT: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^(feat|fix|docs|refactor|perf|test|chore)\(?.*\)?: .+").unwrap()
-});
+static RE_CONVENTIONAL_COMMIT: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(feat|fix|docs|refactor|perf|test|chore)\(?.*\)?: .+").unwrap());
 
 /// Quality assessment of a contribution.
 #[derive(Debug, Clone)]
@@ -79,10 +78,8 @@ impl QualityScorer {
     }
 
     fn check_has_changes(&self, c: &Contribution) -> CheckResult {
-        let has = !c.changes.is_empty()
-            && c.changes
-                .iter()
-                .any(|ch| !ch.new_content.trim().is_empty());
+        let has =
+            !c.changes.is_empty() && c.changes.iter().any(|ch| !ch.new_content.trim().is_empty());
         CheckResult {
             name: "has_changes".into(),
             passed: has,
@@ -311,8 +308,8 @@ impl Default for QualityScorer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::Utc;
     use crate::core::models::{ContributionType, FileChange, Finding, Severity};
+    use chrono::Utc;
 
     fn test_contribution() -> Contribution {
         Contribution {
@@ -352,7 +349,11 @@ mod tests {
         let c = test_contribution();
         let report = scorer.evaluate(&c);
 
-        assert!(report.passed, "Good contribution should pass: {}", report.summary());
+        assert!(
+            report.passed,
+            "Good contribution should pass: {}",
+            report.summary()
+        );
         assert!(report.score >= 0.6);
     }
 
@@ -363,7 +364,11 @@ mod tests {
         c.changes = vec![];
 
         let report = scorer.evaluate(&c);
-        let check = report.checks.iter().find(|c| c.name == "has_changes").unwrap();
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "has_changes")
+            .unwrap();
         assert!(!check.passed, "has_changes should fail with no changes");
         assert_eq!(check.score, 0.0);
     }

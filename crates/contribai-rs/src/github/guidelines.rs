@@ -209,7 +209,11 @@ pub fn adapt_pr_title(
             final_type = if guidelines.allowed_types.contains(&"fix".to_string()) {
                 "fix".into()
             } else {
-                guidelines.allowed_types.first().cloned().unwrap_or("fix".into())
+                guidelines
+                    .allowed_types
+                    .first()
+                    .cloned()
+                    .unwrap_or("fix".into())
             };
         }
 
@@ -315,7 +319,10 @@ mod tests {
     #[test]
     fn test_extract_scope_packages() {
         let g = RepoGuidelines::default();
-        assert_eq!(extract_scope_from_path("packages/console/app.ts", &g), "console");
+        assert_eq!(
+            extract_scope_from_path("packages/console/app.ts", &g),
+            "console"
+        );
     }
 
     #[test]

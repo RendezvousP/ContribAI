@@ -25,9 +25,15 @@ pub struct ContribProfile {
     pub dry_run: bool,
 }
 
-fn default_severity() -> String { "medium".into() }
-fn default_max_prs() -> i32 { 10 }
-fn default_max_repos() -> i32 { 5 }
+fn default_severity() -> String {
+    "medium".into()
+}
+fn default_max_prs() -> i32 {
+    10
+}
+fn default_max_repos() -> i32 {
+    5
+}
 
 /// Built-in profiles.
 pub fn builtin_profiles() -> Vec<ContribProfile> {
@@ -55,10 +61,19 @@ pub fn builtin_profiles() -> Vec<ContribProfile> {
         ContribProfile {
             name: "full-scan".into(),
             description: "Run all analyzers with low threshold".into(),
-            analyzers: vec!["security".into(), "code_quality".into(), "docs".into(), "ui_ux".into()],
+            analyzers: vec![
+                "security".into(),
+                "code_quality".into(),
+                "docs".into(),
+                "ui_ux".into(),
+            ],
             contribution_types: vec![
-                "security_fix".into(), "docs_improve".into(), "code_quality".into(),
-                "feature_add".into(), "ui_ux_fix".into(), "performance_opt".into(),
+                "security_fix".into(),
+                "docs_improve".into(),
+                "code_quality".into(),
+                "feature_add".into(),
+                "ui_ux_fix".into(),
+                "performance_opt".into(),
                 "refactor".into(),
             ],
             severity_threshold: "low".into(),
@@ -125,9 +140,7 @@ pub fn apply_profile(config: &mut serde_json::Value, profile: &ContribProfile) {
         .or_insert_with(|| serde_json::json!({}));
     analysis["severity_threshold"] = serde_json::json!(profile.severity_threshold);
 
-    let github = obj
-        .entry("github")
-        .or_insert_with(|| serde_json::json!({}));
+    let github = obj.entry("github").or_insert_with(|| serde_json::json!({}));
     github["max_prs_per_day"] = serde_json::json!(profile.max_prs_per_day);
     github["max_repos_per_run"] = serde_json::json!(profile.max_repos_per_run);
 }
@@ -170,10 +183,7 @@ mod tests {
             config["analysis"]["severity_threshold"],
             serde_json::json!("high")
         );
-        assert_eq!(
-            config["github"]["max_prs_per_day"],
-            serde_json::json!(5)
-        );
+        assert_eq!(config["github"]["max_prs_per_day"], serde_json::json!(5));
         assert!(config["analysis"]["enabled_analyzers"]
             .as_array()
             .unwrap()

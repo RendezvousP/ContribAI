@@ -297,8 +297,8 @@ impl ContextCompressor {
                 debug!(
                     original = context.len(),
                     compressed = summary.len(),
-                    reduction_pct = ((1.0 - summary.len() as f64 / context.len().max(1) as f64)
-                        * 100.0) as u32,
+                    reduction_pct =
+                        ((1.0 - summary.len() as f64 / context.len().max(1) as f64) * 100.0) as u32,
                     "LLM compression complete"
                 );
                 Ok(summary)
@@ -344,9 +344,8 @@ impl ContextCompressor {
             let is_def = re_def.is_match(stripped);
             let is_decorator = stripped.starts_with('@');
             // Module-level constant: must not be indented
-            let is_const = re_const.is_match(stripped)
-                && !line.starts_with(' ')
-                && !line.starts_with('\t');
+            let is_const =
+                re_const.is_match(stripped) && !line.starts_with(' ') && !line.starts_with('\t');
 
             if is_import || is_def || is_decorator || is_const {
                 result.push(line);
@@ -530,19 +529,37 @@ def standalone(y: float) -> float:
 
         // Imports preserved
         assert!(result.contains("import os"), "missing import os");
-        assert!(result.contains("from typing import List"), "missing from-import");
+        assert!(
+            result.contains("from typing import List"),
+            "missing from-import"
+        );
         // Module-level constant preserved
         assert!(result.contains("MAX_RETRIES = 3"), "missing constant");
         // Class and function signatures preserved
         assert!(result.contains("class Foo:"), "missing class Foo");
-        assert!(result.contains("def bar(self, x: int) -> str:"), "missing def bar");
-        assert!(result.contains("async def baz(self) -> None:"), "missing async def baz");
-        assert!(result.contains("def standalone(y: float) -> float:"), "missing standalone");
+        assert!(
+            result.contains("def bar(self, x: int) -> str:"),
+            "missing def bar"
+        );
+        assert!(
+            result.contains("async def baz(self) -> None:"),
+            "missing async def baz"
+        );
+        assert!(
+            result.contains("def standalone(y: float) -> float:"),
+            "missing standalone"
+        );
         // Bodies stripped
         assert!(!result.contains("return str(x)"), "body should be stripped");
-        assert!(!result.contains("body comment"), "comment should be stripped");
+        assert!(
+            !result.contains("body comment"),
+            "comment should be stripped"
+        );
         // Docstring stripped
-        assert!(!result.contains("Docstring"), "docstring should be stripped");
+        assert!(
+            !result.contains("Docstring"),
+            "docstring should be stripped"
+        );
     }
 
     #[test]
@@ -586,12 +603,21 @@ export interface Config {
 
         assert!(result.contains("export function greet"), "missing greet fn");
         assert!(result.contains("export class MyService"), "missing class");
-        assert!(result.contains("export const handler"), "missing const handler");
+        assert!(
+            result.contains("export const handler"),
+            "missing const handler"
+        );
         assert!(result.contains("export type UserId"), "missing type alias");
-        assert!(result.contains("export interface Config"), "missing interface");
+        assert!(
+            result.contains("export interface Config"),
+            "missing interface"
+        );
         // Implementation body should not appear
         assert!(!result.contains("Hello,"), "body should be stripped");
-        assert!(!result.contains("implementation"), "comment should be stripped");
+        assert!(
+            !result.contains("implementation"),
+            "comment should be stripped"
+        );
     }
 
     #[test]
@@ -628,17 +654,29 @@ impl Analyzer {
 "#;
         let result = c.extract_signatures(src, "rust");
 
-        assert!(result.contains("use std::collections::HashMap"), "missing use");
+        assert!(
+            result.contains("use std::collections::HashMap"),
+            "missing use"
+        );
         assert!(result.contains("pub struct Analyzer"), "missing struct");
         assert!(result.contains("pub enum Status"), "missing enum");
         assert!(result.contains("pub trait Processor"), "missing trait");
         assert!(result.contains("pub fn new"), "missing pub fn new");
-        assert!(result.contains("pub async fn run"), "missing pub async fn run");
+        assert!(
+            result.contains("pub async fn run"),
+            "missing pub async fn run"
+        );
         // Private helper — `fn private_helper` is NOT pub; should not appear
         // (our regex only matches `pub ... fn`)
         // Bodies stripped
-        assert!(!result.contains("do work"), "body comment should be stripped");
-        assert!(!result.contains("Self { config }"), "impl body should be stripped");
+        assert!(
+            !result.contains("do work"),
+            "body comment should be stripped"
+        );
+        assert!(
+            !result.contains("Self { config }"),
+            "impl body should be stripped"
+        );
     }
 
     #[test]
@@ -681,7 +719,10 @@ impl Analyzer {
 
         // big.py should be included but compressed
         let big = result.iter().find(|(p, _)| p == "big.py");
-        assert!(big.is_some(), "big.py should be in result (signatures or truncated)");
+        assert!(
+            big.is_some(),
+            "big.py should be in result (signatures or truncated)"
+        );
         let big_content = &big.unwrap().1;
         // At minimum it should contain one of the signatures or an omitted marker
         assert!(

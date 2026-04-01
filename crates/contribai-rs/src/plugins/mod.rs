@@ -155,8 +155,12 @@ mod tests {
     struct MockAnalyzer;
     #[async_trait]
     impl AnalyzerPlugin for MockAnalyzer {
-        fn name(&self) -> &str { "mock-analyzer" }
-        fn version(&self) -> &str { "1.0.0" }
+        fn name(&self) -> &str {
+            "mock-analyzer"
+        }
+        fn version(&self) -> &str {
+            "1.0.0"
+        }
         async fn analyze(&self, _ctx: &RepoContext) -> Result<Vec<Finding>> {
             Ok(vec![Finding {
                 id: "mock-1".into(),
@@ -177,7 +181,9 @@ mod tests {
     struct FailAnalyzer;
     #[async_trait]
     impl AnalyzerPlugin for FailAnalyzer {
-        fn name(&self) -> &str { "fail-analyzer" }
+        fn name(&self) -> &str {
+            "fail-analyzer"
+        }
         async fn analyze(&self, _ctx: &RepoContext) -> Result<Vec<Finding>> {
             Err(crate::core::error::ContribError::GitHub("fail".into()))
         }

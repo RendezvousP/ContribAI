@@ -100,7 +100,9 @@ impl Notifier {
         for attempt in 0..=2u32 {
             match self.send_slack(event).await {
                 Ok(()) => return,
-                Err(e) if attempt == 2 => warn!(channel = "Slack", error = %e, "Notification failed"),
+                Err(e) if attempt == 2 => {
+                    warn!(channel = "Slack", error = %e, "Notification failed")
+                }
                 Err(_) => {
                     let delay = 1u64 << attempt;
                     debug!(channel = "Slack", attempt = attempt + 1, "Retrying");
@@ -114,7 +116,9 @@ impl Notifier {
         for attempt in 0..=2u32 {
             match self.send_discord(event).await {
                 Ok(()) => return,
-                Err(e) if attempt == 2 => warn!(channel = "Discord", error = %e, "Notification failed"),
+                Err(e) if attempt == 2 => {
+                    warn!(channel = "Discord", error = %e, "Notification failed")
+                }
                 Err(_) => {
                     let delay = 1u64 << attempt;
                     debug!(channel = "Discord", attempt = attempt + 1, "Retrying");
@@ -128,7 +132,9 @@ impl Notifier {
         for attempt in 0..=2u32 {
             match self.send_telegram(event).await {
                 Ok(()) => return,
-                Err(e) if attempt == 2 => warn!(channel = "Telegram", error = %e, "Notification failed"),
+                Err(e) if attempt == 2 => {
+                    warn!(channel = "Telegram", error = %e, "Notification failed")
+                }
                 Err(_) => {
                     let delay = 1u64 << attempt;
                     debug!(channel = "Telegram", attempt = attempt + 1, "Retrying");

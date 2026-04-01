@@ -9,13 +9,10 @@ use tracing::{info, warn};
 
 use crate::core::error::Result;
 
-static RE_SLUG: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"[^a-z0-9]+").unwrap());
+static RE_SLUG: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[^a-z0-9]+").unwrap());
 static RE_CONVENTIONAL: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^[a-z]+(\([^)]+\))?!?: .+").unwrap());
-use crate::core::models::{
-    Contribution, ContributionType, PrResult, PrStatus, Repository,
-};
+use crate::core::models::{Contribution, ContributionType, PrResult, PrStatus, Repository};
 use crate::github::client::GitHubClient;
 use crate::github::guidelines::RepoGuidelines;
 
@@ -30,10 +27,7 @@ pub struct PrManager<'a> {
 
 impl<'a> PrManager<'a> {
     pub fn new(github: &'a GitHubClient) -> Self {
-        Self {
-            github,
-            user: None,
-        }
+        Self { github, user: None }
     }
 
     /// Get and cache the authenticated user.
@@ -73,10 +67,7 @@ impl<'a> PrManager<'a> {
         target_repo: &Repository,
     ) -> Result<PrResult> {
         let user = self.get_user().await?;
-        let username = user["login"]
-            .as_str()
-            .unwrap_or("")
-            .to_string();
+        let username = user["login"].as_str().unwrap_or("").to_string();
         let signoff = Self::build_signoff(user);
 
         // 1. Fork
@@ -94,7 +85,11 @@ impl<'a> PrManager<'a> {
             .await?;
 
         // 3. Commit all file changes
-        for change in contribution.changes.iter().chain(contribution.tests_added.iter()) {
+        for change in contribution
+            .changes
+            .iter()
+            .chain(contribution.tests_added.iter())
+        {
             let sha = if !change.is_new_file {
                 self.github
                     .get_file_sha(&fork.owner, &fork.name, &change.path, Some(&branch))
@@ -135,10 +130,7 @@ impl<'a> PrManager<'a> {
             .await?;
 
         let pr_number = pr_data["number"].as_i64().unwrap_or(0);
-        let pr_url = pr_data["html_url"]
-            .as_str()
-            .unwrap_or("")
-            .to_string();
+        let pr_url = pr_data["html_url"].as_str().unwrap_or("").to_string();
 
         let result = PrResult {
             repo: target_repo.clone(),
@@ -156,11 +148,7 @@ impl<'a> PrManager<'a> {
     }
 
     /// Fork if not already forked.
-    async fn fork_if_needed(
-        &self,
-        username: &str,
-        repo: &Repository,
-    ) -> Result<Repository> {
+    async fn fork_if_needed(&self, username: &str, repo: &Repository) -> Result<Repository> {
         // Check if fork exists
         match self.github.get_repo_details(username, &repo.name).await {
             Ok(existing) if existing.owner == username => {
@@ -171,9 +159,7 @@ impl<'a> PrManager<'a> {
         }
 
         // Create fork
-        self.github
-            .fork_repository(&repo.owner, &repo.name)
-            .await
+        self.github.fork_repository(&repo.owner, &repo.name).await
     }
 
     /// Generate a natural-looking branch name.
@@ -235,12 +221,7 @@ impl<'a> PrManager<'a> {
     }
 
     /// Check PR status.
-    pub async fn get_pr_status(
-        &self,
-        owner: &str,
-        repo: &str,
-        pr_number: i64,
-    ) -> Result<PrStatus> {
+    pub async fn get_pr_status(&self, owner: &str, repo: &str, pr_number: i64) -> Result<PrStatus> {
         let data = self.github.get_pr_details(owner, repo, pr_number).await?;
 
         let state = data["state"].as_str().unwrap_or("open");
@@ -250,7 +231,10 @@ impl<'a> PrManager<'a> {
             PrStatus::Merged
         } else if state == "closed" {
             PrStatus::Closed
-        } else if data["requested_reviewers"].as_array().map_or(false, |r| !r.is_empty()) {
+        } else if data["requested_reviewers"]
+            .as_array()
+            .map_or(false, |r| !r.is_empty())
+        {
             PrStatus::ReviewRequested
         } else {
             PrStatus::Open
@@ -377,8 +361,7 @@ impl<'a> PrManager<'a> {
             let user = &comment["user"];
             let login = user["login"].as_str().unwrap_or("");
             let body = comment["body"].as_str().unwrap_or("");
-            let is_bot =
-                user["type"].as_str() == Some("Bot") || login.ends_with("[bot]");
+            let is_bot = user["type"].as_str() == Some("Bot") || login.ends_with("[bot]");
 
             if !is_bot {
                 continue;
@@ -420,9 +403,7 @@ impl<'a> PrManager<'a> {
 
         // ── Fix: PR title format ──
         if all_comments.contains("conventional commit") || all_comments.contains("needs:title") {
-            if let Some(new_title) =
-                self.build_compliant_title(contribution, guidelines)
-            {
+            if let Some(new_title) = self.build_compliant_title(contribution, guidelines) {
                 match self
                     .github
                     .update_pull_request(
@@ -445,8 +426,9 @@ impl<'a> PrManager<'a> {
 
         // ── Fix: missing issue reference ──
         if all_comments.contains("no issue referenced") || all_comments.contains("needs:issue") {
-            if let Some(issue_number) =
-                self.create_issue_for_finding(contribution, &pr_result.repo).await
+            if let Some(issue_number) = self
+                .create_issue_for_finding(contribution, &pr_result.repo)
+                .await
             {
                 // Fetch current PR body and inject the issue link.
                 match self
@@ -455,8 +437,7 @@ impl<'a> PrManager<'a> {
                     .await
                 {
                     Ok(pr_data) => {
-                        let current_body =
-                            pr_data["body"].as_str().unwrap_or("").to_string();
+                        let current_body = pr_data["body"].as_str().unwrap_or("").to_string();
                         let new_body = inject_issue_link(&current_body, issue_number);
 
                         match self
@@ -485,7 +466,10 @@ impl<'a> PrManager<'a> {
         if fixed_anything {
             info!(pr = pr_result.pr_number, "PR compliance auto-fixed");
         } else {
-            warn!(pr = pr_result.pr_number, "PR has unresolved compliance issues");
+            warn!(
+                pr = pr_result.pr_number,
+                "PR has unresolved compliance issues"
+            );
         }
 
         fixed_anything
@@ -569,8 +553,14 @@ impl<'a> PrManager<'a> {
 
         // Default non-conventional prefixes the Python code detects.
         let default_prefixes = [
-            "Security:", "Quality:", "Docs:", "UI/UX:",
-            "Performance:", "Feature:", "Refactor:", "Fix:",
+            "Security:",
+            "Quality:",
+            "Docs:",
+            "UI/UX:",
+            "Performance:",
+            "Feature:",
+            "Refactor:",
+            "Fix:",
         ];
 
         if default_prefixes.iter().any(|p| title.starts_with(p)) {
@@ -811,7 +801,9 @@ mod tests {
 
     #[test]
     fn test_has_compliance_issue_conventional_commit() {
-        assert!(has_compliance_issue("doesn't follow conventional commit format"));
+        assert!(has_compliance_issue(
+            "doesn't follow conventional commit format"
+        ));
     }
 
     #[test]
@@ -856,7 +848,9 @@ mod tests {
     #[test]
     fn test_conventional_commit_valid() {
         assert!(is_conventional_commit_title("fix: correct null pointer"));
-        assert!(is_conventional_commit_title("feat(auth): add oauth support"));
+        assert!(is_conventional_commit_title(
+            "feat(auth): add oauth support"
+        ));
         assert!(is_conventional_commit_title("docs(readme): update setup"));
         assert!(is_conventional_commit_title("fix!: breaking change"));
     }
@@ -898,7 +892,9 @@ mod tests {
     #[test]
     fn test_build_compliant_title_already_conventional() {
         // This tests the is_conventional_commit_title guard directly.
-        assert!(is_conventional_commit_title("fix: sql injection vulnerability"));
+        assert!(is_conventional_commit_title(
+            "fix: sql injection vulnerability"
+        ));
         // PrManager::build_compliant_title would return None for this.
     }
 

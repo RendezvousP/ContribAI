@@ -262,9 +262,7 @@ impl LlmProvider for GeminiProvider {
             .map_err(|e| ContribError::Llm(format!("Gemini JSON parse: {}", e)))?;
 
         if !status.is_success() {
-            let error_msg = data["error"]["message"]
-                .as_str()
-                .unwrap_or("Unknown error");
+            let error_msg = data["error"]["message"].as_str().unwrap_or("Unknown error");
             if status.as_u16() == 429 {
                 return Err(ContribError::Llm(format!(
                     "Gemini rate limit: {}",
@@ -445,9 +443,7 @@ impl LlmProvider for OpenAIProvider {
             .map_err(|e| ContribError::Llm(format!("OpenAI JSON parse: {}", e)))?;
 
         if !status.is_success() {
-            let error_msg = data["error"]["message"]
-                .as_str()
-                .unwrap_or("Unknown error");
+            let error_msg = data["error"]["message"].as_str().unwrap_or("Unknown error");
             if status.as_u16() == 429 {
                 return Err(ContribError::Llm(format!(
                     "OpenAI rate limit: {}",
@@ -557,9 +553,7 @@ impl LlmProvider for AnthropicProvider {
             .map_err(|e| ContribError::Llm(format!("Anthropic JSON parse: {}", e)))?;
 
         if !status.is_success() {
-            let error_msg = data["error"]["message"]
-                .as_str()
-                .unwrap_or("Unknown error");
+            let error_msg = data["error"]["message"].as_str().unwrap_or("Unknown error");
             if status.as_u16() == 429 {
                 return Err(ContribError::Llm(format!(
                     "Anthropic rate limit: {}",
@@ -786,6 +780,10 @@ mod tests {
             vertex_location: "us-central1".into(),
         };
         let result = create_llm_provider(&config);
-        assert!(result.is_ok(), "Vertex AI mode should succeed without api_key: {:?}", result.err().map(|e| e.to_string()));
+        assert!(
+            result.is_ok(),
+            "Vertex AI mode should succeed without api_key: {:?}",
+            result.err().map(|e| e.to_string())
+        );
     }
 }

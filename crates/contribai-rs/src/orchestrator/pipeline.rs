@@ -50,10 +50,27 @@ const SKIP_EXTENSIONS: &[&str] = &[
 
 /// Directories to skip.
 const SKIP_DIRECTORIES: &[&str] = &[
-    "examples", "example", "samples", "sample", "demos", "demo",
-    "docs", "doc", "test", "tests", "testing", "test_data", "testdata",
-    "fixtures", "benchmarks", "benchmark", "__pycache__", "vendor",
-    "third_party", "third-party", "node_modules",
+    "examples",
+    "example",
+    "samples",
+    "sample",
+    "demos",
+    "demo",
+    "docs",
+    "doc",
+    "test",
+    "tests",
+    "testing",
+    "test_data",
+    "testdata",
+    "fixtures",
+    "benchmarks",
+    "benchmark",
+    "__pycache__",
+    "vendor",
+    "third_party",
+    "third-party",
+    "node_modules",
 ];
 
 /// Result of a pipeline run.
@@ -159,15 +176,13 @@ impl<'a> ContribPipeline<'a> {
 
         self.event_bus
             .emit(
-                Event::new(EventType::PipelineStart, "pipeline.run")
-                    .with_data("dry_run", dry_run),
+                Event::new(EventType::PipelineStart, "pipeline.run").with_data("dry_run", dry_run),
             )
             .await;
 
         // Check daily PR limit
         let today_prs = self.memory.get_today_pr_count()?;
-        let remaining_prs =
-            (self.config.github.max_prs_per_day as usize).saturating_sub(today_prs);
+        let remaining_prs = (self.config.github.max_prs_per_day as usize).saturating_sub(today_prs);
         if remaining_prs == 0 && !dry_run {
             warn!(
                 limit = self.config.github.max_prs_per_day,
@@ -229,7 +244,9 @@ impl<'a> ContribPipeline<'a> {
                 Ok(c) => c,
                 Err(e) => {
                     warn!(repo = %repo.full_name, err = %e, "Middleware error");
-                    result.errors.push(format!("Middleware error for {}: {}", repo.full_name, e));
+                    result
+                        .errors
+                        .push(format!("Middleware error for {}: {}", repo.full_name, e));
                     continue;
                 }
             };
@@ -310,18 +327,15 @@ impl<'a> ContribPipeline<'a> {
         let all_languages: Vec<String> = {
             let base: &[&str] = &["javascript", "typescript", "go", "rust"];
             let mut set: HashSet<String> = langs.iter().cloned().collect();
-            for l in base { set.insert(l.to_string()); }
+            for l in base {
+                set.insert(l.to_string());
+            }
             let mut v: Vec<String> = set.into_iter().collect();
             v.sort();
             v
         };
 
-        info!(
-            rounds,
-            delay_sec,
-            mode,
-            "🔥 Hunt mode started"
-        );
+        info!(rounds, delay_sec, mode, "🔥 Hunt mode started");
 
         for rnd in 1..=rounds {
             // Check daily limit
@@ -361,11 +375,13 @@ impl<'a> ContribPipeline<'a> {
                 "🔥 Hunt round"
             );
 
-            self.event_bus.emit(
-                Event::new(EventType::HuntRoundStart, "pipeline.hunt")
-                    .with_data("round", rnd as i64)
-                    .with_data("total", rounds as i64),
-            ).await;
+            self.event_bus
+                .emit(
+                    Event::new(EventType::HuntRoundStart, "pipeline.hunt")
+                        .with_data("round", rnd as i64)
+                        .with_data("total", rounds as i64),
+                )
+                .await;
 
             let discovery = RepoDiscovery::new(self.github, &self.config.discovery);
             let repos = match discovery.discover(Some(&criteria)).await {
@@ -393,16 +409,21 @@ impl<'a> ContribPipeline<'a> {
                 if self.memory.has_analyzed(&repo.full_name).unwrap_or(false) {
                     continue;
                 }
-                match self.github.list_pull_requests(
-                    &repo.owner, &repo.name, "closed", 10,
-                ).await {
+                match self
+                    .github
+                    .list_pull_requests(&repo.owner, &repo.name, "closed", 10)
+                    .await
+                {
                     Ok(prs) => {
-                        let merged = prs.iter().filter(|p| {
-                            p.get("merged_at")
-                                .and_then(|v| v.as_str())
-                                .map(|s| !s.is_empty())
-                                .unwrap_or(false)
-                        }).count();
+                        let merged = prs
+                            .iter()
+                            .filter(|p| {
+                                p.get("merged_at")
+                                    .and_then(|v| v.as_str())
+                                    .map(|s| !s.is_empty())
+                                    .unwrap_or(false)
+                            })
+                            .count();
                         if merged > 0 {
                             info!(repo = %repo.full_name, merged, "✅ Merge-friendly target");
                             targets.push(repo.clone());
@@ -448,11 +469,15 @@ impl<'a> ContribPipeline<'a> {
                     }
                 };
                 if ctx.should_skip {
-                    if ctx.rate_limited { break; }
+                    if ctx.rate_limited {
+                        break;
+                    }
                     continue;
                 }
 
-                let rr = self.hunt_process_repo(repo, mode, dry_run, remaining, &ctx).await;
+                let rr = self
+                    .hunt_process_repo(repo, mode, dry_run, remaining, &ctx)
+                    .await;
                 total.repos_analyzed += rr.repos_analyzed;
                 total.findings_total += rr.findings_total;
                 total.contributions_generated += rr.contributions_generated;
@@ -462,19 +487,20 @@ impl<'a> ContribPipeline<'a> {
 
                 if i < selected.len() - 1 && delay_between > 0.0 {
                     debug!("Inter-repo delay: {}s", delay_between);
-                    tokio::time::sleep(
-                        std::time::Duration::from_secs_f64(delay_between)
-                    ).await;
+                    tokio::time::sleep(std::time::Duration::from_secs_f64(delay_between)).await;
                 }
             }
 
             // Issue-first on odd rounds
             if (mode == "issues" || mode == "both") && rnd % 2 == 1 {
-                match self.hunt_issues_globally(
-                    &hunt_langs.iter().take(2).cloned().collect::<Vec<_>>(),
-                    dry_run,
-                    3,
-                ).await {
+                match self
+                    .hunt_issues_globally(
+                        &hunt_langs.iter().take(2).cloned().collect::<Vec<_>>(),
+                        dry_run,
+                        3,
+                    )
+                    .await
+                {
                     Ok(ir) => {
                         total.findings_total += ir.findings_total;
                         total.contributions_generated += ir.contributions_generated;
@@ -524,12 +550,10 @@ impl<'a> ContribPipeline<'a> {
         }
 
         if mode == "issues" || mode == "both" {
-            match self.process_repo_issues(
-                repo,
-                dry_run,
-                remaining.saturating_sub(rr.prs_created),
-                ctx,
-            ).await {
+            match self
+                .process_repo_issues(repo, dry_run, remaining.saturating_sub(rr.prs_created), ctx)
+                .await
+            {
                 Ok(r) => {
                     rr.repos_analyzed = rr.repos_analyzed.max(r.repos_analyzed);
                     rr.findings_total += r.findings_total;
@@ -569,24 +593,29 @@ impl<'a> ContribPipeline<'a> {
                 };
 
                 for issue in issues.iter().take(max_issues) {
-                    let repo_url = issue.get("repository_url")
+                    let repo_url = issue
+                        .get("repository_url")
                         .and_then(|v| v.as_str())
                         .unwrap_or("");
-                    if repo_url.is_empty() { continue; }
+                    if repo_url.is_empty() {
+                        continue;
+                    }
 
                     let parts: Vec<&str> = repo_url.trim_end_matches('/').split('/').collect();
-                    if parts.len() < 2 { continue; }
+                    if parts.len() < 2 {
+                        continue;
+                    }
                     let (owner, repo_name) = (parts[parts.len() - 2], parts[parts.len() - 1]);
                     let full_name = format!("{owner}/{repo_name}");
 
-                    if self.memory.has_analyzed(&full_name).unwrap_or(false) { continue; }
+                    if self.memory.has_analyzed(&full_name).unwrap_or(false) {
+                        continue;
+                    }
 
-                    let past_open = self.memory
-                        .get_prs(Some("open"), 20)
-                        .unwrap_or_default();
-                    let has_open = past_open.iter().any(|p| {
-                        p.get("repo").map(|r| r == &full_name).unwrap_or(false)
-                    });
+                    let past_open = self.memory.get_prs(Some("open"), 20).unwrap_or_default();
+                    let has_open = past_open
+                        .iter()
+                        .any(|p| p.get("repo").map(|r| r == &full_name).unwrap_or(false));
                     if has_open {
                         continue;
                     }
@@ -601,21 +630,25 @@ impl<'a> ContribPipeline<'a> {
 
                     match self.github.get_repo_details(owner, repo_name).await {
                         Ok(repo) => {
-                let ctx = PipelineContext {
+                            let ctx = PipelineContext {
                                 repo_name: full_name.clone(),
                                 owner: owner.to_string(),
                                 dry_run,
                                 remaining_prs: max_issues as i32,
                                 ..Default::default()
                             };
-                            let rr = self.hunt_process_repo(&repo, "issues", dry_run, max_issues, &ctx).await;
+                            let rr = self
+                                .hunt_process_repo(&repo, "issues", dry_run, max_issues, &ctx)
+                                .await;
                             result.repos_analyzed += rr.repos_analyzed;
                             result.findings_total += rr.findings_total;
                             result.contributions_generated += rr.contributions_generated;
                             result.prs_created += rr.prs_created;
                             result.errors.extend(rr.errors);
 
-                            if result.prs_created >= max_issues { return Ok(result); }
+                            if result.prs_created >= max_issues {
+                                return Ok(result);
+                            }
                         }
                         Err(e) => debug!("Failed to get repo {}: {}", full_name, e),
                     }
@@ -636,15 +669,18 @@ impl<'a> ContribPipeline<'a> {
     ) -> Result<PipelineResult> {
         let mut result = PipelineResult::default();
 
-        self.event_bus.emit(
-            Event::new(EventType::AnalysisStart, "pipeline.process_repo")
-                .with_data("repo", repo.full_name.as_str()),
-        ).await;
+        self.event_bus
+            .emit(
+                Event::new(EventType::AnalysisStart, "pipeline.process_repo")
+                    .with_data("repo", repo.full_name.as_str()),
+            )
+            .await;
 
         info!(repo = %repo.full_name, "📦 Processing");
 
         // ── v5.1: Load working memory cache ──────────────────────────────
-        let cached_context = self.memory
+        let cached_context = self
+            .memory
             .get_context(&repo.full_name, "analysis_summary")
             .ok()
             .flatten();
@@ -669,14 +705,16 @@ impl<'a> ContribPipeline<'a> {
 
         // ── Inject PR history into context for dedup ─────────────────────
         let all_past_prs = self.memory.get_prs(None, 50).unwrap_or_default();
-        let past_titles_lower: HashSet<String> = all_past_prs.iter()
+        let past_titles_lower: HashSet<String> = all_past_prs
+            .iter()
             .filter(|p| p.get("repo").map(|r| r == &repo.full_name).unwrap_or(false))
             .filter_map(|p| p.get("title"))
             .map(|s| s.to_lowercase())
             .collect();
 
         // Also fetch GitHub PRs for external dedup
-        let github_pr_titles: HashSet<String> = self.github
+        let github_pr_titles: HashSet<String> = self
+            .github
             .list_pull_requests(&repo.owner, &repo.name, "all", 50)
             .await
             .unwrap_or_default()
@@ -717,11 +755,13 @@ impl<'a> ContribPipeline<'a> {
             analysis.findings.len() as i64,
         )?;
 
-        self.event_bus.emit(
-            Event::new(EventType::AnalysisComplete, "pipeline.process_repo")
-                .with_data("repo", repo.full_name.as_str())
-                .with_data("findings", analysis.findings.len() as i64),
-        ).await;
+        self.event_bus
+            .emit(
+                Event::new(EventType::AnalysisComplete, "pipeline.process_repo")
+                    .with_data("repo", repo.full_name.as_str())
+                    .with_data("findings", analysis.findings.len() as i64),
+            )
+            .await;
 
         if analysis.findings.is_empty() {
             info!(repo = %repo.full_name, "✅ No findings");
@@ -732,20 +772,20 @@ impl<'a> ContribPipeline<'a> {
         let findings_for_summary = &analysis.findings;
         let summary = ContextCompressor::summarize_findings_compact(findings_for_summary);
         if let Err(e) = self.memory.store_context(
-                &repo.full_name,
-                "analysis_summary",
-                &summary,
-                repo.language.as_deref().unwrap_or(""),
-                72.0,
-            ) {
-                debug!("Failed to save context: {}", e);
-            } else {
-                info!(
-                    repo = %repo.full_name,
-                    findings = analysis.findings.len(),
-                    "💾 Saved analysis context"
-                );
-            }
+            &repo.full_name,
+            "analysis_summary",
+            &summary,
+            repo.language.as_deref().unwrap_or(""),
+            72.0,
+        ) {
+            debug!("Failed to save context: {}", e);
+        } else {
+            info!(
+                repo = %repo.full_name,
+                findings = analysis.findings.len(),
+                "💾 Saved analysis context"
+            );
+        }
 
         // ── Filter findings ──────────────────────────────────────────────
         let findings = self.filter_findings(&analysis, &all_past_titles);
@@ -764,7 +804,8 @@ impl<'a> ContribPipeline<'a> {
         let findings: Vec<_> = findings.into_iter().take(2).collect();
 
         // ── Build repo context ───────────────────────────────────────────
-        let file_tree = self.github
+        let file_tree = self
+            .github
             .get_file_tree(&repo.owner, &repo.name, None)
             .await
             .unwrap_or_default();
@@ -772,9 +813,11 @@ impl<'a> ContribPipeline<'a> {
         let mut relevant_files: HashMap<String, String> = HashMap::new();
         for finding in &findings {
             if !finding.file_path.is_empty() && !relevant_files.contains_key(&finding.file_path) {
-                if let Ok(content) = self.github.get_file_content(
-                    &repo.owner, &repo.name, &finding.file_path, None,
-                ).await {
+                if let Ok(content) = self
+                    .github
+                    .get_file_content(&repo.owner, &repo.name, &finding.file_path, None)
+                    .await
+                {
                     relevant_files.insert(finding.file_path.clone(), content);
                 }
             }
@@ -783,7 +826,8 @@ impl<'a> ContribPipeline<'a> {
         let relevant_file_count = relevant_files.len() as u32;
 
         // Get coding style from working memory
-        let coding_style = self.memory
+        let coding_style = self
+            .memory
             .get_context(&repo.full_name, "coding_style")
             .ok()
             .flatten();
@@ -794,7 +838,11 @@ impl<'a> ContribPipeline<'a> {
             readme_content: None,
             contributing_guide: guidelines.as_ref().and_then(|g| {
                 let text = &g.contributing_md;
-                if !text.is_empty() { Some(text.clone()) } else { None }
+                if !text.is_empty() {
+                    Some(text.clone())
+                } else {
+                    None
+                }
             }),
             relevant_files,
             open_issues: Vec::new(),
@@ -805,19 +853,19 @@ impl<'a> ContribPipeline<'a> {
 
         // ── Generate contributions ───────────────────────────────────────
         // v5.1: Route to code gen model based on complexity
-        let high_sev = findings.iter()
-            .filter(|f| matches!(
-                f.severity,
-                crate::core::models::Severity::Critical | crate::core::models::Severity::High
-            ))
+        let high_sev = findings
+            .iter()
+            .filter(|f| {
+                matches!(
+                    f.severity,
+                    crate::core::models::Severity::Critical | crate::core::models::Severity::High
+                )
+            })
             .count() as u32;
         let complexity = (high_sev * 2 + 5).min(10);
 
-        let gen_model = self.route_model(
-            TaskType::CodeGen,
-            complexity.min(10),
-            relevant_file_count,
-        );
+        let gen_model =
+            self.route_model(TaskType::CodeGen, complexity.min(10), relevant_file_count);
         debug!(model = %gen_model, "Using model for code generation");
 
         let generator = ContributionGenerator::new(self.llm, &self.config.contribution);
@@ -826,10 +874,12 @@ impl<'a> ContribPipeline<'a> {
         let _signoff = ctx.signoff.clone();
 
         for finding in &findings {
-            self.event_bus.emit(
-                Event::new(EventType::GenerationStart, "pipeline.process_repo")
-                    .with_data("title", finding.title.as_str()),
-            ).await;
+            self.event_bus
+                .emit(
+                    Event::new(EventType::GenerationStart, "pipeline.process_repo")
+                        .with_data("title", finding.title.as_str()),
+                )
+                .await;
 
             match generator.generate(finding, &repo_context).await {
                 Ok(Some(contribution)) => {
@@ -874,18 +924,20 @@ impl<'a> ContribPipeline<'a> {
                                     pr_result.pr_number,
                                     &pr_result.pr_url,
                                     &contribution.contribution_type.to_string(),
-                                    "open",           // updated later by patrol
+                                    "open", // updated later by patrol
                                     &pr_result.branch_name,
-                                    0.0,              // merge time unknown yet
+                                    0.0, // merge time unknown yet
                                 ) {
                                     debug!("Outcome record failed (non-fatal): {}", e);
                                 }
 
-                                self.event_bus.emit(
-                                    Event::new(EventType::PrCreated, "pipeline.process_repo")
-                                        .with_data("pr_number", pr_result.pr_number)
-                                        .with_data("url", pr_result.pr_url.as_str()),
-                                ).await;
+                                self.event_bus
+                                    .emit(
+                                        Event::new(EventType::PrCreated, "pipeline.process_repo")
+                                            .with_data("pr_number", pr_result.pr_number)
+                                            .with_data("url", pr_result.pr_url.as_str()),
+                                    )
+                                    .await;
 
                                 info!(
                                     pr = pr_result.pr_number,
@@ -945,7 +997,9 @@ impl<'a> ContribPipeline<'a> {
     ) -> Vec<Finding> {
         let protected: HashSet<&str> = PROTECTED_META_FILES.iter().copied().collect();
 
-        analysis.findings.iter()
+        analysis
+            .findings
+            .iter()
             .filter(|f| {
                 // Skip protected files
                 if protected.contains(f.file_path.as_str()) {
@@ -968,7 +1022,10 @@ impl<'a> ContribPipeline<'a> {
 
                 // Dedup against past PR titles
                 let title_lower = f.title.to_lowercase();
-                if past_titles.iter().any(|pt| titles_similar(&title_lower, pt)) {
+                if past_titles
+                    .iter()
+                    .any(|pt| titles_similar(&title_lower, pt))
+                {
                     debug!(title = %f.title, "Dedup: skipping similar to past PR");
                     return false;
                 }

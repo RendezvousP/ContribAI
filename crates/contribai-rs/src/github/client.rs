@@ -270,7 +270,12 @@ impl GitHubClient {
         let data = self
             .get_with_params(
                 "/search/repositories",
-                &[("q", query), ("sort", sort), ("order", "desc"), ("per_page", &pp)],
+                &[
+                    ("q", query),
+                    ("sort", sort),
+                    ("order", "desc"),
+                    ("per_page", &pp),
+                ],
             )
             .await?;
 
@@ -442,9 +447,7 @@ impl GitHubClient {
             .await?;
         info!(
             fork = data["full_name"].as_str().unwrap_or("?"),
-            "Forked {}/{}",
-            owner,
-            repo
+            "Forked {}/{}", owner, repo
         );
         Ok(parse_repo(&data))
     }
@@ -467,15 +470,9 @@ impl GitHubClient {
 
         // Get SHA of source branch
         let ref_data = self
-            .get(&format!(
-                "/repos/{}/{}/git/ref/heads/{}",
-                owner, repo, from
-            ))
+            .get(&format!("/repos/{}/{}/git/ref/heads/{}", owner, repo, from))
             .await?;
-        let sha = ref_data["object"]["sha"]
-            .as_str()
-            .unwrap_or("")
-            .to_string();
+        let sha = ref_data["object"]["sha"].as_str().unwrap_or("").to_string();
 
         let data = self
             .post(
@@ -561,10 +558,7 @@ impl GitHubClient {
 
         info!(
             pr = data["number"].as_i64().unwrap_or(0),
-            "Created PR on {}/{}: {}",
-            owner,
-            repo,
-            title
+            "Created PR on {}/{}: {}", owner, repo, title
         );
         Ok(data)
     }
@@ -761,25 +755,18 @@ impl GitHubClient {
     /// Get branch details.
     ///
     /// GET /repos/{owner}/{repo}/branches/{branch}
-    pub async fn get_branch_info(
-        &self,
-        owner: &str,
-        repo: &str,
-        branch: &str,
-    ) -> Result<Value> {
+    pub async fn get_branch_info(&self, owner: &str, repo: &str, branch: &str) -> Result<Value> {
         self.get(&format!("/repos/{}/{}/branches/{}", owner, repo, branch))
             .await
     }
 
     /// Get the diff of a pull request.
-    pub async fn get_pr_diff(
-        &self,
-        owner: &str,
-        repo: &str,
-        pr_number: i64,
-    ) -> Result<String> {
+    pub async fn get_pr_diff(&self, owner: &str, repo: &str, pr_number: i64) -> Result<String> {
         let mut headers = HeaderMap::new();
-        headers.insert(ACCEPT, HeaderValue::from_static("application/vnd.github.v3.diff"));
+        headers.insert(
+            ACCEPT,
+            HeaderValue::from_static("application/vnd.github.v3.diff"),
+        );
 
         let response = self
             .request_raw(
@@ -929,11 +916,7 @@ impl GitHubClient {
     /// Execute a GraphQL query against the GitHub API v4.
     ///
     /// Python equivalent: `github/client.py:graphql_query()`
-    pub async fn graphql_query(
-        &self,
-        query: &str,
-        variables: serde_json::Value,
-    ) -> Result<Value> {
+    pub async fn graphql_query(&self, query: &str, variables: serde_json::Value) -> Result<Value> {
         let body = serde_json::json!({
             "query": query,
             "variables": variables,
@@ -947,19 +930,24 @@ impl GitHubClient {
             .json(&body)
             .send()
             .await
-            .map_err(|e| crate::core::error::ContribError::GitHub(format!("GraphQL HTTP error: {}", e)))?;
+            .map_err(|e| {
+                crate::core::error::ContribError::GitHub(format!("GraphQL HTTP error: {}", e))
+            })?;
 
-        let data: Value = response
-            .json()
-            .await
-            .map_err(|e| crate::core::error::ContribError::GitHub(format!("GraphQL parse error: {}", e)))?;
+        let data: Value = response.json().await.map_err(|e| {
+            crate::core::error::ContribError::GitHub(format!("GraphQL parse error: {}", e))
+        })?;
 
         if let Some(errors) = data["errors"].as_array() {
-            let msg = errors.iter()
+            let msg = errors
+                .iter()
                 .filter_map(|e| e["message"].as_str())
                 .collect::<Vec<_>>()
                 .join("; ");
-            return Err(crate::core::error::ContribError::GitHub(format!("GraphQL errors: {}", msg)));
+            return Err(crate::core::error::ContribError::GitHub(format!(
+                "GraphQL errors: {}",
+                msg
+            )));
         }
 
         Ok(data["data"].clone())
@@ -969,11 +957,7 @@ impl GitHubClient {
     ///
     /// Returns issues with label info, comment counts, and author info.
     /// Python equivalent: `github/client.py:search_issues_graphql()`
-    pub async fn search_issues_graphql(
-        &self,
-        query_str: &str,
-        limit: usize,
-    ) -> Result<Vec<Value>> {
+    pub async fn search_issues_graphql(&self, query_str: &str, limit: usize) -> Result<Vec<Value>> {
         let query = r#"
             query($q: String!, $limit: Int!) {
                 search(query: $q, type: ISSUE, first: $limit) {
@@ -1036,12 +1020,7 @@ impl GitHubClient {
     }
 
     /// Get PR details.
-    pub async fn get_pr_details(
-        &self,
-        owner: &str,
-        repo: &str,
-        pr_number: i64,
-    ) -> Result<Value> {
+    pub async fn get_pr_details(&self, owner: &str, repo: &str, pr_number: i64) -> Result<Value> {
         self.get(&format!("/repos/{}/{}/pulls/{}", owner, repo, pr_number))
             .await
     }
@@ -1089,8 +1068,10 @@ impl GitHubClient {
         body: &str,
         labels: &[&str],
     ) -> Result<Value> {
-        let labels_json: Vec<Value> =
-            labels.iter().map(|l| Value::String(l.to_string())).collect();
+        let labels_json: Vec<Value> = labels
+            .iter()
+            .map(|l| Value::String(l.to_string()))
+            .collect();
         self.post(
             &format!("/repos/{}/{}/issues", owner, repo),
             &serde_json::json!({ "title": title, "body": body, "labels": labels_json }),
@@ -1153,10 +1134,7 @@ impl GitHubClient {
     ) -> Result<Vec<Value>> {
         let data = self
             .get_with_params(
-                &format!(
-                    "/repos/{}/{}/issues/{}/timeline",
-                    owner, repo, issue_number
-                ),
+                &format!("/repos/{}/{}/issues/{}/timeline", owner, repo, issue_number),
                 &[("per_page", "100")],
             )
             .await?;
@@ -1184,10 +1162,7 @@ impl GitHubClient {
             params.push(("assignee", a));
         }
         let data = self
-            .get_with_params(
-                &format!("/repos/{}/{}/issues", owner, repo),
-                &params,
-            )
+            .get_with_params(&format!("/repos/{}/{}/issues", owner, repo), &params)
             .await?;
         Ok(data.as_array().cloned().unwrap_or_default())
     }

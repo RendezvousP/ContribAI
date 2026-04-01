@@ -93,7 +93,8 @@ fn tool_definitions() -> Vec<ToolDef> {
     vec![
         ToolDef {
             name: "search_repos".into(),
-            description: "Search GitHub for open-source repositories by language and star range".into(),
+            description: "Search GitHub for open-source repositories by language and star range"
+                .into(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
@@ -185,7 +186,8 @@ fn tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name: "push_file_change".into(),
-            description: "Push a file change to a branch. For updates, sha (blob SHA) is required.".into(),
+            description: "Push a file change to a branch. For updates, sha (blob SHA) is required."
+                .into(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
@@ -263,7 +265,8 @@ fn tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name: "patrol_prs".into(),
-            description: "Collect raw review comments from open PRs for Claude to classify and act on".into(),
+            description:
+                "Collect raw review comments from open PRs for Claude to classify and act on".into(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
@@ -363,10 +366,7 @@ fn tool_definitions() -> Vec<ToolDef> {
 }
 
 /// Run the MCP server on stdio (JSON-RPC over stdin/stdout).
-pub async fn run_stdio_server(
-    github: &GitHubClient,
-    memory: &Memory,
-) -> anyhow::Result<()> {
+pub async fn run_stdio_server(github: &GitHubClient, memory: &Memory) -> anyhow::Result<()> {
     let reader = BufReader::new(tokio::io::stdin());
     let mut lines = reader.lines();
     let stdout = io::stdout();
@@ -389,21 +389,19 @@ pub async fn run_stdio_server(
         let id = request.id.clone().unwrap_or(Value::Null);
 
         let response = match request.method.as_str() {
-            "initialize" => {
-                JsonRpcResponse::success(
-                    id,
-                    json!({
-                        "protocolVersion": "2024-11-05",
-                        "capabilities": {
-                            "tools": {}
-                        },
-                        "serverInfo": {
-                            "name": "contribai",
-                            "version": crate::VERSION
-                        }
-                    }),
-                )
-            }
+            "initialize" => JsonRpcResponse::success(
+                id,
+                json!({
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {
+                        "tools": {}
+                    },
+                    "serverInfo": {
+                        "name": "contribai",
+                        "version": crate::VERSION
+                    }
+                }),
+            ),
 
             "tools/list" => {
                 let tools = tool_definitions();
@@ -411,10 +409,14 @@ pub async fn run_stdio_server(
             }
 
             "tools/call" => {
-                let tool_name = request.params.get("name")
+                let tool_name = request
+                    .params
+                    .get("name")
                     .and_then(|v| v.as_str())
                     .unwrap_or("");
-                let arguments = request.params.get("arguments")
+                let arguments = request
+                    .params
+                    .get("arguments")
                     .cloned()
                     .unwrap_or(json!({}));
 
@@ -488,7 +490,9 @@ async fn handle_tool_call(
                 language, stars_min, stars_max
             );
 
-            let repos = github.search_repositories(&query, "updated", limit as u32).await?;
+            let repos = github
+                .search_repositories(&query, "updated", limit as u32)
+                .await?;
             Ok(json!(repos))
         }
 
@@ -581,7 +585,10 @@ async fn handle_tool_call(
             let repo = require_str("repo")?;
             let pr_number = args["pr_number"].as_i64().unwrap_or(0);
             info!(owner, repo, pr_number, "Closing PR");
-            match github.close_pull_request(owner, repo, pr_number, None).await {
+            match github
+                .close_pull_request(owner, repo, pr_number, None)
+                .await
+            {
                 Ok(()) => Ok(json!({"success": true, "pr_number": pr_number})),
                 Err(e) => Ok(json!({"success": false, "reason": e.to_string()})),
             }
@@ -617,9 +624,17 @@ async fn handle_tool_call(
             info!(owner, repo, "Checking AI contribution policy");
             // Keywords that indicate AI contributions are banned
             let ai_ban_keywords = [
-                "no ai", "no-ai", "not accept ai", "prohibit ai",
-                "ban ai", "ai generated", "ai-generated",
-                "no llm", "human only", "no bot", "no automated",
+                "no ai",
+                "no-ai",
+                "not accept ai",
+                "prohibit ai",
+                "ban ai",
+                "ai generated",
+                "ai-generated",
+                "no llm",
+                "human only",
+                "no bot",
+                "no automated",
                 "ai contributions will be rejected",
             ];
             // Policy files to check in order
@@ -769,7 +784,9 @@ async fn handle_tool_call(
                             // (we fetched via /user/repos?type=fork already)
                             match github.delete_repository(fork_owner, fork_repo).await {
                                 Ok(()) => info!(fork = fork_name, "Deleted stale fork"),
-                                Err(e) => tracing::warn!(fork = fork_name, error = %e, "Failed to delete fork"),
+                                Err(e) => {
+                                    tracing::warn!(fork = fork_name, error = %e, "Failed to delete fork")
+                                }
                             }
                             drop(repo_info);
                         }
@@ -792,7 +809,9 @@ async fn handle_tool_call(
             let repo = require_str("repo")?;
             let pr_number = args["pr_number"].as_i64().unwrap_or(0);
             let body = args["body"].as_str().unwrap_or("");
-            let comment = github.create_pr_comment(owner, repo, pr_number, body).await?;
+            let comment = github
+                .create_pr_comment(owner, repo, pr_number, body)
+                .await?;
             Ok(json!(comment))
         }
 
@@ -802,7 +821,9 @@ async fn handle_tool_call(
             let pr_number = args["pr_number"].as_i64().unwrap_or(0);
             let review_id = args["review_id"].as_i64().unwrap_or(0);
             let message = args["message"].as_str().unwrap_or("");
-            let result = github.dismiss_review(owner, repo, pr_number, review_id, message).await?;
+            let result = github
+                .dismiss_review(owner, repo, pr_number, review_id, message)
+                .await?;
             Ok(json!(result))
         }
 
@@ -854,28 +875,52 @@ mod tests {
         assert!(names.contains(&"search_repos"), "missing search_repos");
         assert!(names.contains(&"get_repo_info"), "missing get_repo_info");
         assert!(names.contains(&"get_file_tree"), "missing get_file_tree");
-        assert!(names.contains(&"get_file_content"), "missing get_file_content");
-        assert!(names.contains(&"get_open_issues"), "missing get_open_issues");
+        assert!(
+            names.contains(&"get_file_content"),
+            "missing get_file_content"
+        );
+        assert!(
+            names.contains(&"get_open_issues"),
+            "missing get_open_issues"
+        );
         assert!(names.contains(&"fork_repo"), "missing fork_repo");
         assert!(names.contains(&"create_branch"), "missing create_branch");
-        assert!(names.contains(&"push_file_change"), "missing push_file_change");
+        assert!(
+            names.contains(&"push_file_change"),
+            "missing push_file_change"
+        );
         assert!(names.contains(&"create_pr"), "missing create_pr");
         assert!(names.contains(&"get_stats"), "missing get_stats");
 
         // 5 previously added tools
         assert!(names.contains(&"close_pr"), "missing close_pr");
-        assert!(names.contains(&"check_duplicate_pr"), "missing check_duplicate_pr");
-        assert!(names.contains(&"check_ai_policy"), "missing check_ai_policy");
+        assert!(
+            names.contains(&"check_duplicate_pr"),
+            "missing check_duplicate_pr"
+        );
+        assert!(
+            names.contains(&"check_ai_policy"),
+            "missing check_ai_policy"
+        );
         assert!(names.contains(&"patrol_prs"), "missing patrol_prs");
         assert!(names.contains(&"cleanup_forks"), "missing cleanup_forks");
 
         // 6 newly added tools
-        assert!(names.contains(&"add_pr_review_comment"), "missing add_pr_review_comment");
+        assert!(
+            names.contains(&"add_pr_review_comment"),
+            "missing add_pr_review_comment"
+        );
         assert!(names.contains(&"dismiss_review"), "missing dismiss_review");
         assert!(names.contains(&"sign_cla"), "missing sign_cla");
         assert!(names.contains(&"get_pr_reviews"), "missing get_pr_reviews");
-        assert!(names.contains(&"get_pr_comments"), "missing get_pr_comments");
-        assert!(names.contains(&"get_authenticated_user"), "missing get_authenticated_user");
+        assert!(
+            names.contains(&"get_pr_comments"),
+            "missing get_pr_comments"
+        );
+        assert!(
+            names.contains(&"get_authenticated_user"),
+            "missing get_authenticated_user"
+        );
     }
 
     #[test]

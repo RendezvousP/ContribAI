@@ -18,12 +18,7 @@ use super::engine::ContributionGenerator;
 /// 2. Normalized trailing-whitespace match (per line)
 /// 3. Stripped leading/trailing whitespace match
 /// 4. Token-based similarity (word overlap ratio >= 0.8)
-pub fn apply_single_edit(
-    content: &str,
-    search: &str,
-    replace: &str,
-    path: &str,
-) -> Option<String> {
+pub fn apply_single_edit(content: &str, search: &str, replace: &str, path: &str) -> Option<String> {
     // Strategy 1: exact
     if content.contains(search) {
         return Some(content.replacen(search, replace, 1));

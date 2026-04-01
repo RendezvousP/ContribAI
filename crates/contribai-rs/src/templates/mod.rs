@@ -142,8 +142,7 @@ impl TemplateRegistry {
         self.templates
             .values()
             .filter(|t| {
-                t.languages.is_empty()
-                    || t.languages.iter().any(|l| l.to_lowercase() == lang)
+                t.languages.is_empty() || t.languages.iter().any(|l| l.to_lowercase() == lang)
             })
             .collect()
     }

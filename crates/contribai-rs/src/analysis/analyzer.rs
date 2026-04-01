@@ -24,8 +24,8 @@ use crate::llm::provider::LlmProvider;
 
 /// File extensions we can meaningfully analyze.
 const ANALYZABLE_EXTENSIONS: &[&str] = &[
-    "py", "js", "ts", "jsx", "tsx", "java", "go", "rs", "rb", "php", "c", "cpp", "h", "hpp",
-    "cs", "swift", "kt", "html", "css", "scss", "vue", "svelte",
+    "py", "js", "ts", "jsx", "tsx", "java", "go", "rs", "rb", "php", "c", "cpp", "h", "hpp", "cs",
+    "swift", "kt", "html", "css", "scss", "vue", "svelte",
 ];
 
 /// Orchestrates multiple code analyzers using LLM + AST.
@@ -62,7 +62,10 @@ impl<'a> CodeAnalyzer<'a> {
         let start = Instant::now();
 
         // 1. Fetch file tree
-        let file_tree = self.github.get_file_tree(&repo.owner, &repo.name, None).await?;
+        let file_tree = self
+            .github
+            .get_file_tree(&repo.owner, &repo.name, None)
+            .await?;
         let file_paths: Vec<String> = file_tree.iter().map(|f| f.path.clone()).collect();
         let analyzable = self.select_files(&file_paths);
 
@@ -105,10 +108,7 @@ impl<'a> CodeAnalyzer<'a> {
         // 4. PageRank file importance — NEW
         let file_ranks = repo_map::rank_files(&import_graph);
         let top_files = repo_map::top_files(&file_ranks, 20);
-        info!(
-            top = top_files.len(),
-            "PageRank: top files identified"
-        );
+        info!(top = top_files.len(), "PageRank: top files identified");
 
         // 5. Select relevant skills
         let language = repo.language.as_deref().unwrap_or("unknown");

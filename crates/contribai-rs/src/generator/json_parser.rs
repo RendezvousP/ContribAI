@@ -38,18 +38,16 @@ impl ContributionGenerator<'_> {
 
         // Strategy 3: bracket-counting — prefer `{"changes"` anchor, then first `[` or `{`
         // whichever comes first in the text (so bare arrays are not missed).
-        let start = response
-            .find(r#"{"changes""#)
-            .or_else(|| {
-                let brace = response.find('{');
-                let bracket = response.find('[');
-                match (brace, bracket) {
-                    (Some(b), Some(k)) => Some(b.min(k)),
-                    (Some(b), None) => Some(b),
-                    (None, Some(k)) => Some(k),
-                    _ => None,
-                }
-            });
+        let start = response.find(r#"{"changes""#).or_else(|| {
+            let brace = response.find('{');
+            let bracket = response.find('[');
+            match (brace, bracket) {
+                (Some(b), Some(k)) => Some(b.min(k)),
+                (Some(b), None) => Some(b),
+                (None, Some(k)) => Some(k),
+                _ => None,
+            }
+        });
 
         let start = start?;
 
@@ -167,8 +165,7 @@ impl ContributionGenerator<'_> {
                         continue;
                     }
 
-                    if let Some(updated) =
-                        apply_single_edit(&new_content, &search, &replace, &path)
+                    if let Some(updated) = apply_single_edit(&new_content, &search, &replace, &path)
                     {
                         new_content = updated;
                         edits_applied += 1;
@@ -292,7 +289,8 @@ mod tests {
     fn test_parse_changes_valid() {
         let gen = mock_gen();
         let ctx = test_context(HashMap::new());
-        let response = r#"[{"path": "src/main.py", "new_content": "print('fixed')", "is_new_file": false}]"#;
+        let response =
+            r#"[{"path": "src/main.py", "new_content": "print('fixed')", "is_new_file": false}]"#;
         let changes = gen.parse_changes(response, &ctx);
         assert!(changes.is_some());
         assert_eq!(changes.unwrap().len(), 1);

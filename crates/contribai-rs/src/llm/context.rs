@@ -96,7 +96,12 @@ pub fn build_repo_context_prompt(
 
     // 3. File tree
     if let Some(tree) = file_tree {
-        let tree_text: String = tree.iter().take(100).cloned().collect::<Vec<_>>().join("\n");
+        let tree_text: String = tree
+            .iter()
+            .take(100)
+            .cloned()
+            .collect::<Vec<_>>()
+            .join("\n");
         let tree_text = truncate_to_tokens(&tree_text, 1000.min(budget.remaining()));
         if budget.add("file_tree", &tree_text) {
             parts.push(format!("## File Structure\n```\n{tree_text}\n```"));
@@ -224,10 +229,30 @@ mod tests {
     #[test]
     fn test_format_file_tree() {
         let nodes = vec![
-            FileNode { path: "src".into(), node_type: "tree".into(), size: 0, sha: String::new() },
-            FileNode { path: "src/main.rs".into(), node_type: "blob".into(), size: 100, sha: String::new() },
-            FileNode { path: "src/lib.rs".into(), node_type: "blob".into(), size: 200, sha: String::new() },
-            FileNode { path: "README.md".into(), node_type: "blob".into(), size: 50, sha: String::new() },
+            FileNode {
+                path: "src".into(),
+                node_type: "tree".into(),
+                size: 0,
+                sha: String::new(),
+            },
+            FileNode {
+                path: "src/main.rs".into(),
+                node_type: "blob".into(),
+                size: 100,
+                sha: String::new(),
+            },
+            FileNode {
+                path: "src/lib.rs".into(),
+                node_type: "blob".into(),
+                size: 200,
+                sha: String::new(),
+            },
+            FileNode {
+                path: "README.md".into(),
+                node_type: "blob".into(),
+                size: 50,
+                sha: String::new(),
+            },
         ];
         let result = format_file_tree(&nodes, 3);
         assert!(result.contains("F README.md"));
@@ -237,9 +262,12 @@ mod tests {
 
     #[test]
     fn test_format_file_tree_depth_limit() {
-        let nodes = vec![
-            FileNode { path: "a/b/c/d/deep.rs".into(), node_type: "blob".into(), size: 0, sha: String::new() },
-        ];
+        let nodes = vec![FileNode {
+            path: "a/b/c/d/deep.rs".into(),
+            node_type: "blob".into(),
+            size: 0,
+            sha: String::new(),
+        }];
         let result = format_file_tree(&nodes, 2);
         assert!(result.is_empty()); // depth 4 > max 2
     }
@@ -248,10 +276,16 @@ mod tests {
     fn test_build_context_with_files() {
         let files = vec![("src/main.py", "print('hello')")];
         let prompt = build_repo_context_prompt(
-            "test/repo", "Python", 50, "desc",
-            None, None, None,
+            "test/repo",
+            "Python",
+            50,
+            "desc",
+            None,
+            None,
+            None,
             Some(&files),
-            None, 6000,
+            None,
+            6000,
         );
         assert!(prompt.contains("src/main.py"));
     }

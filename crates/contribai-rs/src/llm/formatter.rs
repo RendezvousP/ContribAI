@@ -6,17 +6,9 @@ use serde_json::{json, Value};
 
 /// Format messages for a specific LLM provider.
 pub trait MessageFormatter {
-    fn format_messages(
-        &self,
-        messages: &[Message],
-        system: Option<&str>,
-    ) -> Value;
+    fn format_messages(&self, messages: &[Message], system: Option<&str>) -> Value;
 
-    fn format_prompt(
-        &self,
-        prompt: &str,
-        system: Option<&str>,
-    ) -> Value;
+    fn format_prompt(&self, prompt: &str, system: Option<&str>) -> Value;
 }
 
 /// A generic chat message.
@@ -36,7 +28,11 @@ impl MessageFormatter for GeminiFormatter {
         let contents: Vec<Value> = messages
             .iter()
             .map(|m| {
-                let role = if m.role == "assistant" { "model" } else { "user" };
+                let role = if m.role == "assistant" {
+                    "model"
+                } else {
+                    "user"
+                };
                 json!({ "role": role, "parts": [{ "text": m.content }] })
             })
             .collect();
@@ -123,8 +119,14 @@ mod tests {
 
     fn test_messages() -> Vec<Message> {
         vec![
-            Message { role: "user".into(), content: "Hello".into() },
-            Message { role: "assistant".into(), content: "Hi".into() },
+            Message {
+                role: "user".into(),
+                content: "Hello".into(),
+            },
+            Message {
+                role: "assistant".into(),
+                content: "Hi".into(),
+            },
         ]
     }
 

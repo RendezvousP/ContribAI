@@ -145,7 +145,8 @@ impl AgentCoordinator {
              List all security, quality, and performance issues. \
              For each: severity (critical/high/medium/low), line numbers, description, and fix suggestion.",
         );
-        self.execute_agent(&ANALYSIS_AGENT, llm, &prompt, complexity, 1).await
+        self.execute_agent(&ANALYSIS_AGENT, llm, &prompt, complexity, 1)
+            .await
     }
 
     /// Run code generation agent.
@@ -199,13 +200,17 @@ impl AgentCoordinator {
             return results;
         }
 
-        let codegen = self.run_codegen(llm, &analysis.output, code, language).await;
+        let codegen = self
+            .run_codegen(llm, &analysis.output, code, language)
+            .await;
         results.push(codegen.clone());
         if !codegen.success || codegen.output.is_empty() {
             return results;
         }
 
-        let review = self.run_review(llm, code, &codegen.output, &analysis.output).await;
+        let review = self
+            .run_review(llm, code, &codegen.output, &analysis.output)
+            .await;
         results.push(review);
 
         results
@@ -216,12 +221,15 @@ impl AgentCoordinator {
     }
 
     pub fn agent_stats(&self) -> Vec<AgentStatEntry> {
-        self.results.iter().map(|r| AgentStatEntry {
-            agent: r.agent_name.clone(),
-            model: r.model_used.clone(),
-            success: r.success,
-            tokens: r.tokens_used,
-        }).collect()
+        self.results
+            .iter()
+            .map(|r| AgentStatEntry {
+                agent: r.agent_name.clone(),
+                model: r.model_used.clone(),
+                success: r.success,
+                tokens: r.tokens_used,
+            })
+            .collect()
     }
 }
 

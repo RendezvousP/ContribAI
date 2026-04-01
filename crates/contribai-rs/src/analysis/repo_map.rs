@@ -29,7 +29,8 @@ pub fn rank_files(import_graph: &HashMap<String, Vec<String>>) -> HashMap<String
     }
 
     // Build adjacency: if file A imports something with name matching file B, A → B
-    let file_index: HashMap<&String, usize> = files.iter().enumerate().map(|(i, f)| (*f, i)).collect();
+    let file_index: HashMap<&String, usize> =
+        files.iter().enumerate().map(|(i, f)| (*f, i)).collect();
 
     // Build edge lists: edges[i] contains indices of files that file i links to
     let mut outlinks: Vec<Vec<usize>> = vec![Vec::new(); n];
@@ -133,7 +134,11 @@ fn is_import_match(import_name: &str, file_path: &str) -> bool {
         .unwrap_or(file_path);
 
     // Exact stem match or path contains the module
-    stem == module || path_without_ext.ends_with(module) || path_without_ext.replace('/', ".").contains(&normalized_import)
+    stem == module
+        || path_without_ext.ends_with(module)
+        || path_without_ext
+            .replace('/', ".")
+            .contains(&normalized_import)
 }
 
 /// Select top N files by PageRank score.
@@ -156,10 +161,7 @@ mod tests {
             vec!["utils".to_string(), "config".to_string()],
         );
         // utils.py imports config
-        graph.insert(
-            "utils.py".to_string(),
-            vec!["config".to_string()],
-        );
+        graph.insert("utils.py".to_string(), vec!["config".to_string()]);
         // config.py imports nothing
         graph.insert("config.py".to_string(), vec![]);
 

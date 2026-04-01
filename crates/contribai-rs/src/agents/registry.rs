@@ -8,8 +8,7 @@ use async_trait::async_trait;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tracing::{info, error};
-
+use tracing::{error, info};
 
 /// Roles available for sub-agents.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -160,7 +159,10 @@ impl AgentRegistry {
                 Err(e) => {
                     error!("Agent task panicked: {}", e);
                     let mut err = HashMap::new();
-                    err.insert("error".into(), Value::String(format!("Task panicked: {}", e)));
+                    err.insert(
+                        "error".into(),
+                        Value::String(format!("Task panicked: {}", e)),
+                    );
                     results.push(err);
                 }
             }
@@ -185,7 +187,9 @@ pub fn create_default_registry() -> AgentRegistry {
 struct AnalyzerAgent;
 #[async_trait]
 impl SubAgent for AnalyzerAgent {
-    fn role(&self) -> AgentRole { AgentRole::Analyzer }
+    fn role(&self) -> AgentRole {
+        AgentRole::Analyzer
+    }
     fn description(&self) -> &str {
         "Analyze repository code for security, quality, and performance issues"
     }
@@ -200,7 +204,9 @@ impl SubAgent for AnalyzerAgent {
 struct GeneratorAgent;
 #[async_trait]
 impl SubAgent for GeneratorAgent {
-    fn role(&self) -> AgentRole { AgentRole::Generator }
+    fn role(&self) -> AgentRole {
+        AgentRole::Generator
+    }
     fn description(&self) -> &str {
         "Generate code fixes and contributions from analysis findings"
     }
@@ -215,7 +221,9 @@ impl SubAgent for GeneratorAgent {
 struct PatrolAgent;
 #[async_trait]
 impl SubAgent for PatrolAgent {
-    fn role(&self) -> AgentRole { AgentRole::Patrol }
+    fn role(&self) -> AgentRole {
+        AgentRole::Patrol
+    }
     fn description(&self) -> &str {
         "Monitor open PRs for review feedback and auto-respond with fixes"
     }
@@ -229,7 +237,9 @@ impl SubAgent for PatrolAgent {
 struct ComplianceAgent;
 #[async_trait]
 impl SubAgent for ComplianceAgent {
-    fn role(&self) -> AgentRole { AgentRole::Compliance }
+    fn role(&self) -> AgentRole {
+        AgentRole::Compliance
+    }
     fn description(&self) -> &str {
         "Handle CLA auto-signing, DCO signoff, and post-PR CI monitoring"
     }
@@ -244,7 +254,9 @@ impl SubAgent for ComplianceAgent {
 struct IssueSolverAgent;
 #[async_trait]
 impl SubAgent for IssueSolverAgent {
-    fn role(&self) -> AgentRole { AgentRole::IssueSolver }
+    fn role(&self) -> AgentRole {
+        AgentRole::IssueSolver
+    }
     fn description(&self) -> &str {
         "Solve open GitHub issues by generating targeted code contributions"
     }
