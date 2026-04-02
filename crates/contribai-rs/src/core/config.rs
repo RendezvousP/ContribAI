@@ -440,6 +440,9 @@ pub struct PipelineConfig {
     pub max_repos_per_run: usize,
     #[serde(default = "default_max_concurrent_repos")]
     pub max_concurrent_repos: usize,
+    /// Risk tolerance for auto-submission: "low", "medium" (default), "high".
+    #[serde(default = "default_risk_tolerance")]
+    pub risk_tolerance: String,
 }
 
 fn default_max_retries() -> u32 {
@@ -454,6 +457,9 @@ fn default_max_repos_per_run() -> usize {
 fn default_max_concurrent_repos() -> usize {
     3
 }
+fn default_risk_tolerance() -> String {
+    "medium".to_string()
+}
 
 impl Default for PipelineConfig {
     fn default() -> Self {
@@ -463,6 +469,7 @@ impl Default for PipelineConfig {
             dry_run: false,
             max_repos_per_run: default_max_repos_per_run(),
             max_concurrent_repos: default_max_concurrent_repos(),
+            risk_tolerance: default_risk_tolerance(),
         }
     }
 }

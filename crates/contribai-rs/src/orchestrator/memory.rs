@@ -94,6 +94,12 @@ CREATE TABLE IF NOT EXISTS working_memory (
     expires_at  TEXT,
     UNIQUE(repo, key)
 );
+
+CREATE TABLE IF NOT EXISTS dream_meta (
+    key         TEXT PRIMARY KEY,
+    value       TEXT NOT NULL,
+    updated_at  TEXT
+);
 "#;
 
 /// Persistent memory backed by SQLite.
@@ -578,6 +584,321 @@ impl Memory {
             .map_err(|e| ContribError::Config(format!("DB error: {}", e)))?;
         Ok(deleted)
     }
+
+    // ── Dream Memory Consolidation ────────────────────────────────────────
+
+    /// Increment session counter for dream gating.
+    pub fn increment_session_count(&self) -> Result<i64> {
+        let db = self.lock_db()?;
+        let current: i64 = db
+            .query_row(
+                "SELECT CAST(value AS INTEGER) FROM dream_meta WHERE key = 'session_count'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap_or(0);
+
+        let new_count = current + 1;
+        db.execute(
+            "INSERT OR REPLACE INTO dream_meta (key, value, updated_at)
+             VALUES ('session_count', ?1, ?2)",
+            params![new_count.to_string(), Utc::now().to_rfc3339()],
+        )
+        .map_err(|e| ContribError::Config(format!("DB error: {}", e)))?;
+
+        Ok(new_count)
+    }
+
+    /// Check if dream consolidation should run (3-gate trigger).
+    /// Gate 1: 24h since last dream
+    /// Gate 2: At least 5 sessions since last dream
+    /// Gate 3: No concurrent lock
+    pub fn should_dream(&self) -> Result<bool> {
+        let db = self.lock_db()?;
+
+        // Gate 1: Time — 24h since last dream
+        let last_dream: Option<String> = db
+            .query_row(
+                "SELECT value FROM dream_meta WHERE key = 'last_dream_at'",
+                [],
+                |r| r.get(0),
+            )
+            .optional()
+            .map_err(|e| ContribError::Config(format!("DB error: {}", e)))?;
+
+        if let Some(ts) = last_dream {
+            if let Ok(last) = chrono::DateTime::parse_from_rfc3339(&ts) {
+                let hours_since = (Utc::now() - last.with_timezone(&Utc)).num_hours();
+                if hours_since < 24 {
+                    return Ok(false);
+                }
+            }
+        }
+
+        // Gate 2: Sessions — at least 5 sessions
+        let sessions: i64 = db
+            .query_row(
+                "SELECT CAST(value AS INTEGER) FROM dream_meta WHERE key = 'session_count'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap_or(0);
+
+        if sessions < 5 {
+            return Ok(false);
+        }
+
+        // Gate 3: Lock — no concurrent dream
+        let locked: Option<String> = db
+            .query_row(
+                "SELECT value FROM dream_meta WHERE key = 'dream_lock'",
+                [],
+                |r| r.get(0),
+            )
+            .optional()
+            .map_err(|e| ContribError::Config(format!("DB error: {}", e)))?;
+
+        if locked.as_deref() == Some("1") {
+            return Ok(false);
+        }
+
+        Ok(true)
+    }
+
+    /// Run dream consolidation — aggregate PR outcomes into durable repo profiles.
+    pub fn run_dream(&self) -> Result<DreamResult> {
+        let db = self.lock_db()?;
+
+        // Acquire lock
+        db.execute(
+            "INSERT OR REPLACE INTO dream_meta (key, value, updated_at)
+             VALUES ('dream_lock', '1', ?1)",
+            params![Utc::now().to_rfc3339()],
+        )
+        .map_err(|e| ContribError::Config(format!("DB error: {}", e)))?;
+
+        let mut result = DreamResult::default();
+
+        // Phase 1: Gather — get all repos with PR history
+        let repos: Vec<String> = {
+            let mut stmt = db
+                .prepare("SELECT DISTINCT repo FROM pr_outcomes")
+                .map_err(|e| ContribError::Config(format!("DB error: {}", e)))?;
+            let mapped = stmt
+                .query_map([], |row| row.get(0))
+                .map_err(|e| ContribError::Config(format!("DB error: {}", e)))?;
+            mapped.filter_map(|r| r.ok()).collect()
+        };
+
+        // Phase 2: Consolidate — for each repo, compute profile
+        for repo in &repos {
+            let mut stmt = db
+                .prepare(
+                    "SELECT pr_type, outcome, time_to_close_hours, feedback
+                     FROM pr_outcomes WHERE repo = ?1",
+                )
+                .map_err(|e| ContribError::Config(format!("DB error: {}", e)))?;
+
+            let rows: Vec<(String, String, f64, String)> = {
+                let mapped = stmt
+                    .query_map(params![repo], |row| {
+                        Ok((
+                            row.get::<_, String>(0)?,
+                            row.get::<_, String>(1)?,
+                            row.get::<_, f64>(2).unwrap_or(0.0),
+                            row.get::<_, String>(3).unwrap_or_default(),
+                        ))
+                    })
+                    .map_err(|e| ContribError::Config(format!("DB error: {}", e)))?;
+                mapped.filter_map(|r| r.ok()).collect()
+            };
+
+            if rows.is_empty() {
+                continue;
+            }
+
+            let mut type_stats: HashMap<String, (i32, i32)> = HashMap::new(); // (merged, total)
+            let mut total_hours = 0.0f64;
+            let mut merged_count = 0i32;
+            let mut feedbacks: Vec<String> = Vec::new();
+
+            for (pr_type, outcome, hours, feedback) in &rows {
+                let entry = type_stats.entry(pr_type.clone()).or_insert((0, 0));
+                entry.1 += 1;
+                if outcome == "merged" {
+                    entry.0 += 1;
+                    merged_count += 1;
+                    total_hours += hours;
+                }
+                if !feedback.is_empty() {
+                    feedbacks.push(feedback.clone());
+                }
+            }
+
+            let preferred: Vec<String> = type_stats
+                .iter()
+                .filter(|(_, (m, t))| *t > 0 && (*m as f64 / *t as f64) >= 0.5)
+                .map(|(k, _)| k.clone())
+                .collect();
+
+            let avoid: Vec<String> = type_stats
+                .iter()
+                .filter(|(_, (m, t))| *t >= 2 && *m == 0)
+                .map(|(k, _)| k.clone())
+                .collect();
+
+            let merge_rate = if !rows.is_empty() {
+                merged_count as f64 / rows.len() as f64
+            } else {
+                0.0
+            };
+
+            let avg_hours = if merged_count > 0 {
+                total_hours / merged_count as f64
+            } else {
+                0.0
+            };
+
+            // Summarize maintainer style from feedback
+            let notes = if feedbacks.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    "Last {} feedbacks recorded. Patterns: {}",
+                    feedbacks.len(),
+                    feedbacks
+                        .iter()
+                        .take(3)
+                        .map(|f| f.chars().take(60).collect::<String>())
+                        .collect::<Vec<_>>()
+                        .join("; ")
+                )
+            };
+
+            db.execute(
+                "INSERT OR REPLACE INTO repo_preferences
+                 (repo, preferred_types, rejected_types, merge_rate,
+                  avg_review_hours, notes, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                params![
+                    repo,
+                    serde_json::to_string(&preferred).unwrap_or_default(),
+                    serde_json::to_string(&avoid).unwrap_or_default(),
+                    (merge_rate * 1000.0).round() / 1000.0,
+                    (avg_hours * 10.0).round() / 10.0,
+                    notes,
+                    Utc::now().to_rfc3339()
+                ],
+            )
+            .map_err(|e| ContribError::Config(format!("DB error: {}", e)))?;
+
+            result.repos_profiled += 1;
+        }
+
+        // Prune expired working memory
+        let now = Utc::now().to_rfc3339();
+        let pruned = db
+            .execute(
+                "DELETE FROM working_memory WHERE expires_at <= ?1",
+                params![now],
+            )
+            .unwrap_or(0);
+        result.entries_pruned = pruned;
+
+        // Update dream meta
+        db.execute(
+            "INSERT OR REPLACE INTO dream_meta (key, value, updated_at)
+             VALUES ('last_dream_at', ?1, ?1)",
+            params![Utc::now().to_rfc3339()],
+        )
+        .map_err(|e| ContribError::Config(format!("DB error: {}", e)))?;
+
+        // Reset session counter
+        db.execute(
+            "INSERT OR REPLACE INTO dream_meta (key, value, updated_at)
+             VALUES ('session_count', '0', ?1)",
+            params![Utc::now().to_rfc3339()],
+        )
+        .map_err(|e| ContribError::Config(format!("DB error: {}", e)))?;
+
+        // Release lock
+        db.execute(
+            "INSERT OR REPLACE INTO dream_meta (key, value, updated_at)
+             VALUES ('dream_lock', '0', ?1)",
+            params![Utc::now().to_rfc3339()],
+        )
+        .map_err(|e| ContribError::Config(format!("DB error: {}", e)))?;
+
+        result.success = true;
+        Ok(result)
+    }
+
+    /// Get dream stats for display.
+    pub fn get_dream_stats(&self) -> Result<HashMap<String, String>> {
+        let db = self.lock_db()?;
+        let mut stats = HashMap::new();
+
+        let last: String = db
+            .query_row(
+                "SELECT value FROM dream_meta WHERE key = 'last_dream_at'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap_or_else(|_| "never".into());
+        stats.insert("last_dream".into(), last);
+
+        let sessions: String = db
+            .query_row(
+                "SELECT value FROM dream_meta WHERE key = 'session_count'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap_or_else(|_| "0".into());
+        stats.insert("sessions_since_dream".into(), sessions);
+
+        let profiles: i64 = db
+            .query_row("SELECT COUNT(*) FROM repo_preferences", [], |r| r.get(0))
+            .unwrap_or(0);
+        stats.insert("repo_profiles".into(), profiles.to_string());
+
+        Ok(stats)
+    }
+
+    /// Get repo leaderboard sorted by merge rate.
+    pub fn get_leaderboard(&self, limit: usize) -> Result<Vec<HashMap<String, String>>> {
+        let db = self.lock_db()?;
+        let mut stmt = db
+            .prepare(
+                "SELECT repo, merge_rate, preferred_types, rejected_types
+                 FROM repo_preferences
+                 ORDER BY merge_rate DESC LIMIT ?1",
+            )
+            .map_err(|e| ContribError::Config(format!("DB error: {}", e)))?;
+
+        let rows = stmt
+            .query_map(params![limit as i64], |row| {
+                let mut m = HashMap::new();
+                m.insert("repo".into(), row.get::<_, String>(0)?);
+                m.insert(
+                    "merge_rate".into(),
+                    format!("{:.0}%", row.get::<_, f64>(1)? * 100.0),
+                );
+                m.insert("preferred".into(), row.get::<_, String>(2)?);
+                m.insert("avoided".into(), row.get::<_, String>(3)?);
+                Ok(m)
+            })
+            .map_err(|e| ContribError::Config(format!("DB error: {}", e)))?;
+
+        Ok(rows.filter_map(|r| r.ok()).collect())
+    }
+}
+
+/// Result of a dream consolidation pass.
+#[derive(Debug, Default)]
+pub struct DreamResult {
+    pub success: bool,
+    pub repos_profiled: usize,
+    pub entries_pruned: usize,
 }
 
 /// Learned repo preferences.
@@ -745,5 +1066,94 @@ mod tests {
         assert_eq!(stats["total_repos_analyzed"], 1);
         assert_eq!(stats["total_prs_submitted"], 1);
         assert_eq!(stats["prs_merged"], 1);
+    }
+
+    // ── Dream consolidation tests ─────────────────────────────────────────
+
+    #[test]
+    fn test_session_counter() {
+        let mem = test_memory();
+        assert_eq!(mem.increment_session_count().unwrap(), 1);
+        assert_eq!(mem.increment_session_count().unwrap(), 2);
+        assert_eq!(mem.increment_session_count().unwrap(), 3);
+    }
+
+    #[test]
+    fn test_should_dream_gates() {
+        let mem = test_memory();
+
+        // No sessions yet → false
+        assert!(!mem.should_dream().unwrap());
+
+        // Add 5 sessions → should pass (no prior dream = time gate passes)
+        for _ in 0..5 {
+            mem.increment_session_count().unwrap();
+        }
+        assert!(mem.should_dream().unwrap());
+    }
+
+    #[test]
+    fn test_dream_consolidation() {
+        let mem = test_memory();
+
+        // Add outcomes
+        mem.record_outcome("repo/a", 1, "url1", "security_fix", "merged", "", 24.0)
+            .unwrap();
+        mem.record_outcome("repo/a", 2, "url2", "docs", "merged", "good docs", 12.0)
+            .unwrap();
+        mem.record_outcome("repo/a", 3, "url3", "refactor", "closed", "not needed", 0.0)
+            .unwrap();
+
+        mem.record_outcome("repo/b", 10, "url10", "docs", "merged", "", 6.0)
+            .unwrap();
+
+        // Fill sessions
+        for _ in 0..5 {
+            mem.increment_session_count().unwrap();
+        }
+
+        // Run dream
+        let result = mem.run_dream().unwrap();
+        assert!(result.success);
+        assert_eq!(result.repos_profiled, 2);
+
+        // Verify profiles
+        let prefs_a = mem.get_repo_preferences("repo/a").unwrap().unwrap();
+        assert!(prefs_a
+            .preferred_types
+            .contains(&"security_fix".to_string()));
+        assert!(prefs_a.preferred_types.contains(&"docs".to_string()));
+        assert!(prefs_a.merge_rate > 0.6);
+
+        let prefs_b = mem.get_repo_preferences("repo/b").unwrap().unwrap();
+        assert_eq!(prefs_b.merge_rate, 1.0);
+
+        // After dream, session counter should be reset
+        assert!(!mem.should_dream().unwrap());
+    }
+
+    #[test]
+    fn test_dream_stats() {
+        let mem = test_memory();
+        let stats = mem.get_dream_stats().unwrap();
+        assert_eq!(stats["last_dream"], "never");
+        assert_eq!(stats["sessions_since_dream"], "0");
+    }
+
+    #[test]
+    fn test_leaderboard() {
+        let mem = test_memory();
+
+        mem.record_outcome("repo/a", 1, "u", "fix", "merged", "", 10.0)
+            .unwrap();
+        mem.record_outcome("repo/b", 1, "u", "fix", "closed", "", 10.0)
+            .unwrap();
+        mem.record_outcome("repo/b", 2, "u", "fix", "merged", "", 10.0)
+            .unwrap();
+
+        let board = mem.get_leaderboard(10).unwrap();
+        assert!(!board.is_empty());
+        // repo/a has 100% merge rate, should be first
+        assert_eq!(board[0]["repo"], "repo/a");
     }
 }

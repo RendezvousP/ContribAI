@@ -217,6 +217,16 @@ enum Commands {
 
     /// Interactive TUI mode — browse PRs, repos, and run operations
     Interactive,
+
+    /// Dream — consolidate memory into durable repo profiles
+    ///
+    /// Inspired by Claude Code's "Dream" system: aggregates PR outcomes,
+    /// feedback, and working memory into repo personality profiles.
+    Dream {
+        /// Force dream even if gates haven't been met
+        #[arg(long)]
+        force: bool,
+    },
 }
 
 impl Cli {
@@ -908,6 +918,11 @@ impl Cli {
                 let config = load_config(self.config.as_deref())?;
                 tui::run_interactive_tui(&config)
             }
+
+            Commands::Dream { force } => {
+                print_banner();
+                run_dream(self.config.as_deref(), force)
+            }
         }
     }
 }
@@ -945,6 +960,7 @@ fn run_interactive_menu() -> anyhow::Result<Commands> {
         "🌐  Web server   — start dashboard",
         "📡  System status — DB, rate limits, scheduler",
         "🔔  Notify test  — test notification channels",
+        "💤  Dream        — consolidate memory into repo profiles",
         "⚙️   Config       — show current config",
         "🛠   Config set   — change a setting",
         "🔐  Login        — check auth status",
@@ -1023,8 +1039,9 @@ fn run_interactive_menu() -> anyhow::Result<Commands> {
         },
         15 => Commands::SystemStatus,
         16 => Commands::NotifyTest,
-        17 => Commands::Config,
-        18 => {
+        17 => Commands::Dream { force: false },
+        18 => Commands::Config,
+        19 => {
             let key: String = dialoguer::Input::new()
                 .with_prompt("Config key (e.g. llm.provider)")
                 .interact_text()?;
@@ -1033,13 +1050,105 @@ fn run_interactive_menu() -> anyhow::Result<Commands> {
                 .interact_text()?;
             Commands::ConfigSet { key, value }
         }
-        19 => Commands::Login,
-        20 => Commands::Init { output: None },
+        20 => Commands::Login,
+        21 => Commands::Init { output: None },
         _ => std::process::exit(0),
     })
 }
 
 // ── Login check ───────────────────────────────────────────────────────────────
+
+/// Dream — consolidate memory into durable repo profiles.
+fn run_dream(config_path: Option<&str>, force: bool) -> anyhow::Result<()> {
+    use console::style;
+
+    println!("{}", style("💤 Dream — Memory Consolidation").cyan().bold());
+    println!("{}", "━".repeat(50).dimmed());
+    println!();
+
+    let config = load_config(config_path)?;
+    let memory = create_memory(&config)?;
+
+    // Show pre-dream stats
+    let stats = memory
+        .get_dream_stats()
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
+    println!(
+        "  {:<18} {}",
+        style("Last dream:").bold(),
+        stats.get("last_dream").unwrap_or(&"never".into())
+    );
+    println!(
+        "  {:<18} {}",
+        style("Sessions since:").bold(),
+        stats.get("sessions_since_dream").unwrap_or(&"0".into())
+    );
+    println!(
+        "  {:<18} {}",
+        style("Repo profiles:").bold(),
+        stats.get("repo_profiles").unwrap_or(&"0".into())
+    );
+    println!();
+
+    // Check gates
+    let should = memory
+        .should_dream()
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+    if !should && !force {
+        println!(
+            "  {} Dream gates not met (need 24h + 5 sessions).",
+            style("💭").bold()
+        );
+        println!("  Use {} to override.", style("--force").yellow());
+        return Ok(());
+    }
+
+    println!("  {} Running dream consolidation...", style("🌙").bold());
+    println!();
+
+    let result = memory.run_dream().map_err(|e| anyhow::anyhow!("{}", e))?;
+
+    if result.success {
+        println!("  {} Dream complete!", style("✅").bold());
+        println!(
+            "  {:<18} {}",
+            style("Repos profiled:").bold(),
+            style(result.repos_profiled.to_string()).green()
+        );
+        println!(
+            "  {:<18} {}",
+            style("Entries pruned:").bold(),
+            style(result.entries_pruned.to_string()).yellow()
+        );
+
+        // Show updated profiles
+        let board = memory
+            .get_leaderboard(10)
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        if !board.is_empty() {
+            println!();
+            println!("  {}", style("Repo Profiles:").cyan().bold());
+            for entry in &board {
+                let repo = entry.get("repo").map(|s| s.as_str()).unwrap_or("?");
+                let rate = entry.get("merge_rate").map(|s| s.as_str()).unwrap_or("?");
+                let preferred = entry.get("preferred").map(|s| s.as_str()).unwrap_or("[]");
+                println!(
+                    "    {} {:<30} merge rate: {} preferred: {}",
+                    style("•").dim(),
+                    style(repo).white(),
+                    style(rate).green(),
+                    style(preferred).dim()
+                );
+            }
+        }
+    } else {
+        println!("  {} Dream consolidation failed.", style("❌").bold());
+    }
+
+    println!();
+    Ok(())
+}
 
 async fn run_login_check(config_path: Option<&str>) -> anyhow::Result<()> {
     use crate::cli::wizard::{mask_secret, LlmChoice};
