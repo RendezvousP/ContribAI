@@ -1,6 +1,6 @@
 # Architecture
 
-ContribAI v5.2.0 — Rust-native autonomous contribution agent.
+ContribAI v5.4.2 — Rust-native autonomous contribution agent.
 
 ## System Overview
 
@@ -48,7 +48,7 @@ All source in `crates/contribai-rs/src/`:
 
 | Module | Purpose | Key Files |
 |--------|---------|-----------|
-| `cli/` | 22 commands + ratatui TUI | `mod.rs`, `tui.rs`, `wizard.rs`, `config_editor.rs` |
+| `cli/` | 40+ commands + ratatui TUI | `mod.rs`, `tui.rs`, `wizard.rs`, `config_editor.rs` |
 | `core/` | Config, models, middleware, events | `config.rs`, `events.rs` |
 | `analysis/` | Code analysis + 17 skills | `analyzer.rs`, `skills.rs`, `context_compressor.rs` |
 | `llm/` | Multi-provider LLM + 5 sub-agents | `provider.rs`, `agents.rs` |
@@ -78,15 +78,16 @@ All source in `crates/contribai-rs/src/`:
 7. CI Monitor     → Auto-close PRs that fail CI
 ```
 
-### Hunt Mode
+### Hunt Mode (v5.3.0+)
 
 ```
 for round in 1..N:
-    1. Vary star range + languages
+    1. Vary star range + languages (rotate sort order for diversity)
     2. Discover repos (random tier selection)
-    3. Filter: skip analyzed, check merge history
-    4. Process each repo through standard pipeline
-    5. Sleep between rounds (configurable delay)
+    3. Apply watchlist filter if configured (targeted repos)
+    4. Filter: skip analyzed, check merge history
+    5. Process each repo through standard pipeline
+    6. Sleep between rounds (configurable delay)
 ```
 
 ```mermaid
@@ -124,15 +125,17 @@ sequenceDiagram
     P-->>CLI: PipelineResult
 ```
 
-### PR Patrol
+### PR Patrol (v5.4.0+)
 
 ```
 for each open PR:
-    1. Fetch reviews + comments
+    1. Fetch reviews + comments + conversation history
     2. Filter bot comments (11+ known bots)
     3. Classify feedback (CODE_CHANGE, QUESTION, STYLE_FIX, etc.)
-    4. Generate fix via LLM → push commit
-    5. Respond to questions via LLM
+    4. Maintain conversation context for intelligent responses
+    5. Generate fix via LLM → push commit
+    6. Respond to questions via LLM
+    7. Auto-clean 404 PRs (v5.4.2)
 ```
 
 ## Middleware Chain
@@ -143,7 +146,7 @@ for each open PR:
 | 2 | `ValidationMiddleware` | Validate repo data exists |
 | 3 | `RetryMiddleware` | 2 retries with exponential backoff |
 | 4 | `DCOMiddleware` | Compute Signed-off-by from user profile |
-| 5 | `QualityGateMiddleware` | Score check (min 5.0/10) |
+| 5 | `QualityGateMiddleware` | Score check (min 0.6/1.0) |
 
 ## Progressive Skill Loading
 

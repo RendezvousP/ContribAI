@@ -1,6 +1,6 @@
 # ContribAI — Project Overview & PDR
 
-**Version:** 5.2.0 | **License:** AGPL-3.0 + Commons Clause | **Status:** Active Development
+**Version:** 5.4.2 | **License:** AGPL-3.0 + Commons Clause | **Status:** Active Development
 
 ---
 
@@ -8,7 +8,7 @@
 
 **ContribAI** is an autonomous AI agent written in Rust that discovers open source repositories on GitHub, analyzes them for improvement opportunities, generates high-quality code fixes, and submits Pull Requests — all without human intervention. It bridges the gap between maintainer bandwidth constraints and contributor availability by delivering production-grade contributions at scale.
 
-**v5.2.0** is the full Rust rewrite: ~4.5 MB single binary, ~5ms startup, 22 CLI commands, interactive TUI, and real notification delivery.
+**v5.4.2** is the full Rust rewrite: ~4.5 MB single binary, ~5ms startup, 40+ CLI commands, interactive TUI, real notification delivery, watchlist mode, dream memory consolidation, and risk classification system.
 
 ---
 
@@ -45,10 +45,25 @@ Autonomous, safe, high-quality code contributions that:
 - Duplicate PR prevention via title similarity
 - Post-PR CI monitoring with auto-close on failures
 
-#### Interactive TUI (v5.2.0 NEW)
+#### Interactive TUI
 - **ratatui** 4-tab terminal browser: Dashboard / PRs / Repos / Actions
 - Browse PR history, per-repo merge rates, run commands
 - Keyboard navigation: Tab/1-4 switch tabs · j/k scroll · ? help · q quit
+
+#### Watchlist Mode (v5.3.0)
+- Target specific repositories for focused scanning and contributions
+- Rotate sort orders and pagination across hunt rounds for discovery diversity
+- Ideal for maintaining key projects or focused ecosystem work
+
+#### Dream Memory System (v5.4.0)
+- Consolidate memory entries during idle periods for efficiency
+- Risk classification (Low/Medium/High) for auto-submit control
+- Conversation-aware patrol with context history
+
+#### Enhanced Patrol (v5.4.0)
+- Conversation-aware feedback classification with context history
+- Auto-generate fixes based on review feedback
+- Intelligent PR lifecycle management
 
 #### Resilience & Safety
 - AI policy detection (respects contributor bans)
@@ -111,12 +126,12 @@ Autonomous, safe, high-quality code contributions that:
 | `reqwest` | HTTP client (async, rustls) |
 | `axum` | Web framework + dashboard |
 | `rusqlite` | SQLite (bundled) |
-| `clap` | CLI (derive macros, 22 commands) |
+| `clap` | CLI (derive macros, 40+ commands) |
 | `ratatui` + `crossterm` | Interactive TUI |
 | `serde` / `serde_json` / `serde_yaml` | Serialization |
 | `tracing` | Structured logging |
 | `anyhow` / `thiserror` | Error handling |
-| `tree-sitter` | AST parsing (8 languages) |
+| `tree-sitter` | AST parsing (13 languages) |
 | `hmac` + `sha2` | Webhook HMAC verification |
 
 ### Optional
@@ -152,7 +167,7 @@ Autonomous, safe, high-quality code contributions that:
 | FR-A.6 | Framework-specific detection | Auto-detect Django/Flask/FastAPI/React/etc. |
 | FR-A.7 | Progressive skill loading | 17 skills on-demand by language |
 | FR-A.8 | Deep validation | LLM validates findings against file context |
-| FR-A.9 | AST parsing | tree-sitter (8 languages) |
+| FR-A.9 | AST parsing | tree-sitter (13 languages) |
 | FR-A.10 | File importance ranking | PageRank via import graph |
 
 ### Generation (FR-G)
@@ -183,7 +198,7 @@ Autonomous, safe, high-quality code contributions that:
 
 | ID | Requirement | Implementation |
 |----|-------------|---------------|
-| FR-I.1 | 22-command CLI | clap derive + dialoguer menu |
+| FR-I.1 | 40+ command CLI | clap derive + dialoguer menu |
 | FR-I.2 | Interactive TUI | ratatui 4-tab browser |
 | FR-I.3 | Setup wizard | `contribai init` with dialoguer |
 | FR-I.4 | Config editor | `config-get/set/list` YAML editor |
@@ -218,7 +233,7 @@ Autonomous, safe, high-quality code contributions that:
 | Requirement | Target |
 |---|---|
 | Uptime (dashboard) | 99.5% (self-hosted) |
-| CI pass rate (tests) | 100% (cargo test: 335 tests) |
+| CI pass rate (tests) | 100% (cargo test: 355 tests) |
 | Recovery time (crash) | < 5 minutes (auto-restart) |
 
 ### Security (NFR-S)
@@ -262,7 +277,7 @@ Autonomous, safe, high-quality code contributions that:
 | **Code review comments** | < 2 per PR | GitHub API |
 | **Rejection rate** | < 20% | PR close reason |
 | **Quality score avg** | > 0.75/1.0 | Scorer output |
-| **Test coverage (Rust)** | 335+ tests | `cargo test` |
+| **Test coverage (Rust)** | 355+ tests | `cargo test` |
 
 ---
 
@@ -290,17 +305,20 @@ Autonomous, safe, high-quality code contributions that:
 
 ### Recent Releases
 
-- **v5.0.0** (2026-03-31) — Full Rust rewrite, 21 CLI commands, 323 tests
-- **v5.2.0** (2026-04-01) — Interactive TUI, real notifications, 22 commands, 335 tests
+- **v5.4.2** (2026-04-04) — Risk classification, auto-clean 404 PRs, YAML list fix, MCP stdout fix, conversation-aware patrol
+- **v5.4.0** (2026-04-03) — Dream memory consolidation + risk classification system
+- **v5.3.0** (2026-04-02) — 13-language AST, all-language discovery, Gemini 3.x
+- **v5.2.0** (2026-04-01) — Interactive TUI, real notifications, 40+ commands, 355 tests
+- **v5.0.0** (2026-03-31) — Full Rust rewrite, initial 21 CLI commands
 - **v4.1.0** (2026-03-28) — Python legacy: Antigravity MCP, clean PR titles _(archived)_
 
-### Planned (v5.2.0+)
+### Planned (v5.5.0+)
 
-- PostgreSQL migration layer
-- Redis distributed rate limiting
-- Prometheus + OpenTelemetry
-- Kubernetes Helm charts
-- Multi-turn LLM conversations for complex reasoning
+- PostgreSQL migration layer for multi-instance deployments
+- Redis distributed rate limiting for scaled deployments
+- Prometheus + OpenTelemetry metrics and distributed tracing
+- Kubernetes Helm charts for cloud-native deployment
+- Multi-turn LLM conversations for complex reasoning chains
 
 ---
 
@@ -343,6 +361,6 @@ Autonomous, safe, high-quality code contributions that:
 ## Document Metadata
 
 - **Created:** 2026-03-28
-- **Last Updated:** 2026-04-01
-- **Version:** 5.2.0 (Rust — Interactive TUI + full CLI parity)
+- **Last Updated:** 2026-04-04
+- **Version:** 5.4.2 (Rust — Watchlist, Dream Memory, Risk Classification, Conversation-Aware Patrol)
 - **Related:** README.md, AGENTS.md, docs/ARCHITECTURE.md, docs/system-architecture.md

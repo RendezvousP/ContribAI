@@ -1,12 +1,12 @@
 # Project Roadmap
 
-**Current Version:** 5.2.0 | **Release Date:** 2026-04-01 | **Status:** Active Development
+**Current Version:** 5.4.2 | **Release Date:** 2026-04-04 | **Status:** Active Development
 
 ---
 
 ## Executive Summary
 
-ContribAI is a mature autonomous AI contribution system. Originally built in Python (v0.x–v4.0), it was rewritten in Rust (v5.0.0) for performance, safety, and new capabilities like tree-sitter AST parsing and PageRank file ranking. v5.2.0 adds an interactive TUI, real notification delivery, and full 22-command CLI parity. The roadmap focuses on leveraging Rust's advantages for production maturity and ecosystem expansion.
+ContribAI is a mature autonomous AI contribution system. Originally built in Python (v0.x–v4.0), it was rewritten in Rust (v5.0.0) for performance, safety, and new capabilities like tree-sitter AST parsing and PageRank file ranking. v5.2.0 added an interactive TUI and full CLI parity. v5.3.0 introduced watchlist mode and 13-language AST. v5.4.0+ adds dream memory consolidation and risk classification. The roadmap focuses on leveraging Rust's advantages for production maturity and ecosystem expansion.
 
 ---
 
@@ -107,9 +107,35 @@ ContribAI is a mature autonomous AI contribution system. Originally built in Pyt
 - ✓ Python moved to `python/` (v4.1.0 legacy, preserved for reference)
 - ✓ Root `Cargo.toml` workspace — `cargo build` from project root
 
+### v5.3.0 (2026-04-02) — Watchlist Mode & 13-Language AST ✓
+
+**Key Achievements (v5.3.0):**
+- ✓ Watchlist mode: targeted repo scanning for focused ecosystem work
+- ✓ Rotating sort order + pagination for diverse discovery across hunt rounds
+- ✓ Expanded AST support: 13 languages (was 8) including Ruby, PHP, Bash, YAML, JSON
+- ✓ All-language discovery (scan all 15 supported languages by default)
+- ✓ Gemini 3.x model support
+
+### v5.4.0 (2026-04-03) — Dream Memory & Risk Classification ✓
+
+**Key Achievements (v5.4.0):**
+- ✓ Dream memory consolidation: efficient memory entry consolidation during idle periods
+- ✓ Risk classification: Low/Medium/High risk levels for auto-submit control
+- ✓ Conversation-aware patrol: maintains context history for intelligent feedback responses
+- ✓ Enhanced PR lifecycle management
+
+### v5.4.2 (2026-04-04) — Bug Fixes & Polish ✓
+
+**Key Achievements (v5.4.2):**
+- ✓ Auto-clean 404 PRs from patrol monitoring
+- ✓ Config-set YAML list values: proper quoting for list items
+- ✓ MCP stdout fix: tracing + banner redirected to stderr
+- ✓ 65 .rs files, ~26,000+ LOC, **355 tests**
+- ✓ 40+ CLI commands (expanded from 22)
+
 ---
 
-## Feature Status Matrix (v5.2.0)
+## Feature Status Matrix (v5.4.2)
 
 ### Core Pipeline
 
@@ -117,12 +143,14 @@ ContribAI is a mature autonomous AI contribution system. Originally built in Pyt
 |---------|--------|---------|
 | Repository discovery | ✓ Complete | GitHub Search API (REST + GraphQL) |
 | Multi-strategy analysis | ✓ Complete | 7 analyzers, 17 skills, framework detection |
-| Tree-sitter AST parsing | ✓ Complete | 8 language grammars (Rust-only) |
+| Tree-sitter AST parsing | ✓ Complete | 13 language grammars (Rust-only, v5.3.0) |
 | PageRank file ranking | ✓ Complete | Import graph analysis (Rust-only) |
 | 12-signal triage | ✓ Complete | Multi-factor issue scoring (Rust-only) |
 | LLM-powered generation | ✓ Complete | Multi-provider routing, self-review, quality scoring |
+| Risk classification | ✓ Complete | Low/Medium/High for auto-submit control (v5.4.0) |
 | Autonomous PR creation | ✓ Complete | Fork, branch, commit, PR, CLA/DCO handling |
-| Hunt mode (multi-round) | ✓ Complete | Configurable rounds, delays, deduplication |
+| Hunt mode (multi-round) | ✓ Complete | Configurable rounds, delays, deduplication, watchlist (v5.3.0) |
+| Dream memory | ✓ Complete | Consolidate memory during idle periods (v5.4.0) |
 | Cross-file fixes | ✓ Complete | Bulk fix for pattern repetition |
 | Issue-driven solving | ✓ Complete | Fetch + solve open GitHub issues |
 
@@ -139,6 +167,7 @@ ContribAI is a mature autonomous AI contribution system. Originally built in Pyt
 | Deep validation | ✓ Complete | LLM validates findings vs. file context |
 | Webhook verification | ✓ Complete | HMAC-SHA256 signature validation |
 | API key auth | ✓ Complete | Constant-time comparison (timing attack safe) |
+| Auto-clean 404 PRs | ✓ Complete | Remove stale forks with 404 status (v5.4.2) |
 
 ### Platform Features
 
@@ -193,11 +222,20 @@ ContribAI is a mature autonomous AI contribution system. Originally built in Pyt
 - ✓ Python moved to `python/` legacy, root Cargo workspace
 - ✓ 335 tests
 
+### Milestone 6: Advanced Features (v5.3.0–v5.4.2) ✓
+- ✓ Watchlist mode for targeted repo scanning
+- ✓ 13-language AST support (expanded from 8)
+- ✓ Dream memory consolidation for efficiency
+- ✓ Risk classification for intelligent auto-submit
+- ✓ Conversation-aware PR patrol with context
+- ✓ Auto-clean 404 PRs from patrol
+- ✓ 40+ CLI commands, 355 tests, 65 .rs files, ~26,000+ LOC
+
 ---
 
-## Planned Features (v5.2+)
+## Planned Features (v5.5.0+)
 
-### v5.2.0 — Enterprise Scalability (Q2 2026)
+### v5.5.0 — Enterprise Scalability (Q2 2026)
 
 - [ ] PostgreSQL migration layer (drop-in SQLite replacement)
 - [ ] Redis-based distributed rate limiting
@@ -206,7 +244,7 @@ ContribAI is a mature autonomous AI contribution system. Originally built in Pyt
 - [ ] Kubernetes Helm charts
 - [ ] Multi-region deployment patterns
 
-### v5.2.0 — Advanced Analysis (Q3 2026)
+### v5.6.0 — Advanced Analysis (Q3 2026)
 
 - [ ] Semantic code chunking (not truncation)
 - [ ] Code2Vec embeddings for similarity
@@ -214,7 +252,7 @@ ContribAI is a mature autonomous AI contribution system. Originally built in Pyt
 - [ ] Enhanced tree-sitter analysis (cross-file reference resolution)
 - [ ] Type-aware code generation
 
-### v5.3.0 — Plugin Ecosystem (Q4 2026)
+### v5.7.0 — Plugin Ecosystem (Q4 2026)
 
 - [ ] Central plugin registry (GitHub-based)
 - [ ] Plugin package format (dynamic Rust libraries / WASM)
@@ -267,23 +305,24 @@ ContribAI is a mature autonomous AI contribution system. Originally built in Pyt
 
 ## Success Metrics
 
-| Metric | v4.0 (Python) | v5.0 (Rust) | Target (v5.1) |
+| Metric | v4.0 (Python) | v5.0 (Rust) | v5.4.2 (Current) |
 |--------|---------------|-------------|----------------|
-| **LOC** | ~5,500 | ~21,400 | ~22,000 |
-| **Test count** | ~298 | 323 | **335** |
+| **LOC** | ~5,500 | ~21,400 | ~26,000+ |
+| **Files** | 45 | 63 | **65** |
+| **Test count** | ~298 | 323 | **355** |
 | **Binary size** | N/A (interpreted) | ~15MB static | ~4.5MB stripped |
 | **Startup time** | ~2s | <100ms | ~5ms |
 | **Memory usage** | ~80MB | ~20MB | ~8MB |
 | **MCP tools** | 14 | 21 | 21 |
-| **CLI commands** | 8 | 21 | **22** |
+| **CLI commands** | 8 | 21 | **40+** |
 | **Analysis skills** | 12 | 17 | 17 |
-| **AST languages** | 0 | 8 | 8 |
+| **AST languages** | 0 | 8 | **13** |
 
 ---
 
 ## Document Metadata
 
 - **Created:** 2026-03-28
-- **Last Updated:** 2026-04-01
-- **Version:** 5.2.0 (TUI + full CLI parity)
+- **Last Updated:** 2026-04-04
+- **Version:** 5.4.2 (Watchlist, Dream Memory, Risk Classification, Conversation-Aware Patrol)
 - **Next Review:** 2026-06-30 (Q2 end)

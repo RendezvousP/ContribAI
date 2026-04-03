@@ -1,6 +1,6 @@
 # Deployment Guide
 
-**Version:** 5.2.0 | **Language:** Rust | **Last Updated:** 2026-04-01
+**Version:** 5.4.2 | **Language:** Rust | **Last Updated:** 2026-04-04
 
 ---
 
@@ -59,7 +59,7 @@ docker compose up -d dashboard scheduler
 ```bash
 # Install to PATH (recommended)
 cargo install --path crates/contribai-rs
-contribai --version  # 5.2.0
+contribai --version  # 5.4.2
 contribai --help
 
 # Or run directly from build output:
@@ -90,8 +90,8 @@ cargo test
 **Verification:**
 
 ```bash
-./target/release/contribai-rs --help
-# Shows all 13 commands
+./target/release/contribai --help
+# Shows all 40+ commands
 ```
 
 **Prerequisites:**
@@ -110,17 +110,17 @@ RUN cargo build --release
 
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
-COPY --from=builder /app/target/release/contribai-rs /usr/local/bin/contribai
+COPY --from=builder /app/target/release/contribai /usr/local/bin/contribai
 EXPOSE 8787
 ENTRYPOINT ["contribai"]
 ```
 
 ```bash
 # Build image
-docker build -t contribai:5.0.0 .
+docker build -t contribai:5.4.2 .
 
 # Run
-docker run --rm contribai:5.0.0 --help
+docker run --rm contribai:5.4.2 --help
 ```
 
 ### Method 3: Kubernetes (Enterprise)
@@ -150,7 +150,7 @@ github:
 # LLM Configuration
 llm:
   provider: "gemini"                  # gemini | openai | anthropic | ollama
-  model: "gemini-2.5-flash"           # Model ID
+  model: "gemini-3-flash-preview"     # Model ID (v5.4.0+)
   api_key: "your_api_key"             # API key for provider
   temperature: 0.5                    # Creativity (0.0-2.0)
   max_tokens: 2000                    # Max response length
@@ -214,7 +214,7 @@ scheduler:
 export CONTRIBAI_GITHUB_TOKEN="ghp_..."
 export CONTRIBAI_LLM_PROVIDER="gemini"
 export CONTRIBAI_LLM_API_KEY="your_api_key"
-export CONTRIBAI_LLM_MODEL="gemini-2.5-flash"
+export CONTRIBAI_LLM_MODEL="gemini-3-flash-preview"
 export GITHUB_WEBHOOK_SECRET="your-webhook-secret"
 export CONTRIBAI_WEB_PORT="8787"
 ```

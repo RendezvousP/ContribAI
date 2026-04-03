@@ -1,6 +1,6 @@
 # System Architecture
 
-**Version:** 5.2.0 | **Language:** Rust | **Last Updated:** 2026-04-01
+**Version:** 5.4.2 | **Language:** Rust | **Last Updated:** 2026-04-04
 
 ---
 
@@ -8,7 +8,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    ContribAI Pipeline (v5.2.0 Rust)             │
+│                    ContribAI Pipeline (v5.4.2 Rust)             │
 └─────────────────────────────────────────────────────────────────┘
 
 Input: GitHub Repository (URL or discovery)
@@ -17,7 +17,7 @@ Input: GitHub Repository (URL or discovery)
 │ 1. DISCOVERY                                                    │
 │ ├─ GitHub Search API (language, stars, activity)               │
 │ ├─ GraphQL search for advanced queries                         │
-│ ├─ Hunt Mode: Multi-round discovery with delays                │
+│ ├─ Hunt Mode: Multi-round discovery with watchlist + rotation   │
 │ ├─ Issue-driven: Fetch open issues from repo                   │
 │ ├─ 12-signal triage scoring (Rust-only)                        │
 │ └─ Duplicate check: Skip if already analyzed                   │
@@ -36,7 +36,7 @@ Input: GitHub Repository (URL or discovery)
 │ 3. ANALYSIS                                                     │
 │ ├─ Language/Framework detection                                │
 │ ├─ Progressive skill loading (17 skills, on-demand)            │
-│ ├─ Tree-sitter AST parsing (8 languages, Rust-only)           │
+│ ├─ Tree-sitter AST parsing (13 languages, Rust-only)          │
 │ ├─ PageRank file importance ranking (Rust-only)                │
 │ ├─ 3-tier context compression with signature extraction        │
 │ ├─ 7 Multi-strategy analyzers (parallel via tokio):            │
@@ -57,6 +57,7 @@ Input: GitHub Repository (URL or discovery)
 │ │  ├─ LLM generates code fix (with retry on failure)           │
 │ │  ├─ Self-review: LLM validates own fix                       │
 │ │  ├─ Quality scoring: 7-check gate (correctness, style, etc.) │
+│ │  ├─ Risk classification: Low/Medium/High for auto-submit     │
 │ │  ├─ Syntax validation (balanced brackets, no-op detection)   │
 │ │  ├─ Fuzzy matching for duplicate detection                   │
 │ │  └─ Result: Contribution with confidence score               │
@@ -80,9 +81,9 @@ Input: GitHub Repository (URL or discovery)
 │ ├─ Event emission (PRCreated, PipelineCompleted)               │
 │ ├─ JSONL event logging (~/.contribai/events.jsonl)             │
 │ ├─ Notification dispatch (Slack, Discord, Telegram)            │
-│ ├─ Memory update (record outcomes)                             │
-│ ├─ PR Patrol monitoring (async, background)                    │
-│ └─ CI status tracking (auto-close on failure)                  │
+│ ├─ Memory update (record outcomes, dream consolidation)        │
+│ ├─ PR Patrol monitoring (async, background, conversation-aware)│
+│ └─ CI status tracking (auto-close 404 PRs on failure)          │
 └────────────────────────┬────────────────────────────────────────┘
    ▼
 Output: PipelineResult { repos_analyzed, prs_created, findings_count }
@@ -373,7 +374,7 @@ github:
 
 llm:
   provider: "gemini"           # gemini | openai | anthropic | ollama
-  model: "gemini-2.5-flash"
+  model: "gemini-3-flash-preview"
   api_key: "..."
   temperature: 0.5
   max_tokens: 2000
@@ -491,5 +492,5 @@ pub enum ContribAIError {
 ## Document Metadata
 
 - **Created:** 2026-03-28
-- **Last Updated:** 2026-04-01
-- **Version:** 5.2.0 (Interactive TUI + full CLI parity)
+- **Last Updated:** 2026-04-04
+- **Version:** 5.4.2 (Watchlist, Dream Memory, Risk Classification, Conversation-Aware Patrol)

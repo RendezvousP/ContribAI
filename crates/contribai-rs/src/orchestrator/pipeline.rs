@@ -14,7 +14,10 @@ use crate::core::config::ContribAIConfig;
 use crate::core::error::Result;
 use crate::core::events::{Event, EventBus, EventType};
 use crate::core::middleware::{build_default_chain, MiddlewareChain, PipelineContext};
-use crate::core::models::{AnalysisResult, DiscoveryCriteria, Finding, Repository};
+use crate::core::models::{
+    AnalysisResult, Contribution, ContributionType, DiscoveryCriteria, FileChange, Finding,
+    Repository,
+};
 use crate::generator::engine::ContributionGenerator;
 use crate::generator::risk::{classify_risk, is_within_tolerance};
 use crate::generator::scorer::QualityScorer;
@@ -96,6 +99,78 @@ pub struct ContribPipeline<'a> {
     router: std::sync::Mutex<TaskRouter>,
     /// Allow HIGH risk changes to auto-submit (set via --approve flag).
     approve_high_risk: bool,
+}
+
+/// Merge multiple contributions into a single multi-file contribution.
+///
+/// Deduplicates file changes by path (first seen wins) and creates a combined
+/// title/description. If only one contribution, returns it as-is.
+/// Public so CLI commands can reuse it without a full pipeline.
+pub fn merge_contributions_pub(contribs: Vec<Contribution>) -> Contribution {
+    if contribs.len() == 1 {
+        return contribs.into_iter().next().unwrap();
+    }
+
+    let first = &contribs[0];
+    let mut all_changes: Vec<FileChange> = Vec::new();
+    let mut all_tests: Vec<FileChange> = Vec::new();
+    let mut descriptions = Vec::new();
+    let mut seen_paths = HashSet::new();
+
+    for c in &contribs {
+        descriptions.push(format!("- {}", c.title));
+        for change in &c.changes {
+            if seen_paths.insert(change.path.clone()) {
+                all_changes.push(change.clone());
+            }
+        }
+        for test in &c.tests_added {
+            if seen_paths.insert(test.path.clone()) {
+                all_tests.push(test.clone());
+            }
+        }
+    }
+
+    let type_prefix = match first.contribution_type {
+        ContributionType::SecurityFix => "fix(security)",
+        ContributionType::CodeQuality => "fix",
+        ContributionType::PerformanceOpt => "perf",
+        ContributionType::DocsImprove => "docs",
+        ContributionType::FeatureAdd => "feat",
+        _ => "refactor",
+    };
+    let title = format!(
+        "{}: {} improvements across {} files",
+        type_prefix,
+        contribs.len(),
+        all_changes.len()
+    );
+
+    info!(
+        contributions = contribs.len(),
+        files = all_changes.len(),
+        "📦 Merged contributions into single PR"
+    );
+
+    Contribution {
+        finding: first.finding.clone(),
+        contribution_type: first.contribution_type.clone(),
+        title: title.clone(),
+        description: format!(
+            "Combined multi-file contribution:\n\n{}\n\nFiles changed: {}",
+            descriptions.join("\n"),
+            all_changes
+                .iter()
+                .map(|c| c.path.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        changes: all_changes,
+        commit_message: format!("{}\n\n{}", title, descriptions.join("\n")),
+        tests_added: all_tests,
+        branch_name: first.branch_name.clone(),
+        generated_at: chrono::Utc::now(),
+    }
 }
 
 impl<'a> ContribPipeline<'a> {
@@ -222,6 +297,9 @@ impl<'a> ContribPipeline<'a> {
             result.findings_total as i64,
             result.errors.len() as i64,
         )?;
+
+        // v5.4: Auto-trigger dream consolidation if gates pass
+        self.maybe_dream();
 
         Ok(result)
     }
@@ -871,6 +949,30 @@ impl<'a> ContribPipeline<'a> {
 
         // ── Filter findings ──────────────────────────────────────────────
         let findings = self.filter_findings(&analysis, &all_past_titles);
+
+        // ── v5.4: Dream profile — skip rejected contribution types ──────
+        let findings: Vec<_> = if let Ok(Some(profile)) =
+            self.memory.get_repo_profile(&repo.full_name)
+        {
+            if !profile.rejected_types.is_empty() {
+                info!(
+                    repo = %repo.full_name,
+                    rejected = ?profile.rejected_types,
+                    merge_rate = profile.merge_rate,
+                    "🧠 Dream profile loaded — filtering rejected types"
+                );
+            }
+            findings
+                .into_iter()
+                .filter(|f| {
+                    let ftype = f.finding_type.to_string();
+                    !profile.rejected_types.iter().any(|r| r == &ftype)
+                })
+                .collect()
+        } else {
+            findings
+        };
+
         info!(
             repo = %repo.full_name,
             raw = analysis.findings.len(),
@@ -955,6 +1057,9 @@ impl<'a> ContribPipeline<'a> {
         // Get signoff from middleware context
         let _signoff = ctx.signoff.clone();
 
+        // ── v5.5: Batch generation — collect valid contributions, merge into single PR ──
+        let mut valid_contributions: Vec<Contribution> = Vec::new();
+
         for finding in &findings {
             self.event_bus
                 .emit(
@@ -975,7 +1080,7 @@ impl<'a> ContribPipeline<'a> {
                         continue;
                     }
 
-                    // ── v5.4: Risk classification gate ────────────────────
+                    // Risk classification gate
                     let files_changed: Vec<String> = contribution
                         .changes
                         .iter()
@@ -1011,66 +1116,7 @@ impl<'a> ContribPipeline<'a> {
                         "🛡️ Risk: {}", risk.level
                     );
 
-                    result.contributions_generated += 1;
-
-                    if dry_run {
-                        info!(
-                            title = %contribution.title,
-                            score = report.score,
-                            risk = %risk.level,
-                            "🏃 [DRY RUN] Would create PR"
-                        );
-                    } else {
-                        let mut pr_mgr = PrManager::new(self.github);
-                        match pr_mgr.create_pr(&contribution, repo).await {
-                            Ok(pr_result) => {
-                                result.prs_created += 1;
-
-                                // ── v5.1: Record PR for dedup ──────────────
-                                self.memory.record_pr(
-                                    &repo.full_name,
-                                    pr_result.pr_number,
-                                    &pr_result.pr_url,
-                                    &contribution.title,
-                                    &contribution.contribution_type.to_string(),
-                                    &pr_result.branch_name,
-                                    &pr_result.fork_full_name,
-                                )?;
-
-                                // ── v5.2: Outcome learning — initial status ─
-                                if let Err(e) = self.memory.record_outcome(
-                                    &repo.full_name,
-                                    pr_result.pr_number,
-                                    &pr_result.pr_url,
-                                    &contribution.contribution_type.to_string(),
-                                    "open", // updated later by patrol
-                                    &pr_result.branch_name,
-                                    0.0, // merge time unknown yet
-                                ) {
-                                    debug!("Outcome record failed (non-fatal): {}", e);
-                                }
-
-                                self.event_bus
-                                    .emit(
-                                        Event::new(EventType::PrCreated, "pipeline.process_repo")
-                                            .with_data("pr_number", pr_result.pr_number)
-                                            .with_data("url", pr_result.pr_url.as_str()),
-                                    )
-                                    .await;
-
-                                info!(
-                                    pr = pr_result.pr_number,
-                                    url = %pr_result.pr_url,
-                                    "✅ PR created + outcome recorded"
-                                );
-                            }
-                            Err(e) => {
-                                let msg = format!("PR creation failed: {}", e);
-                                warn!("{}", msg);
-                                result.errors.push(msg);
-                            }
-                        }
-                    }
+                    valid_contributions.push(contribution);
                 }
                 Ok(None) => {
                     info!(title = %finding.title, "No contribution generated");
@@ -1082,28 +1128,225 @@ impl<'a> ContribPipeline<'a> {
         }
 
         result.repos_analyzed = 1;
+
+        if valid_contributions.is_empty() {
+            return Ok(result);
+        }
+
+        // Merge multiple contributions into a single multi-file PR
+        let merged = Self::merge_contributions(valid_contributions);
+        result.contributions_generated = merged.changes.len();
+
+        if dry_run {
+            info!(
+                title = %merged.title,
+                files = merged.changes.len(),
+                "🏃 [DRY RUN] Would create multi-file PR"
+            );
+        } else {
+            let mut pr_mgr = PrManager::new(self.github);
+            match pr_mgr.create_pr(&merged, repo).await {
+                Ok(pr_result) => {
+                    result.prs_created += 1;
+
+                    self.memory.record_pr(
+                        &repo.full_name,
+                        pr_result.pr_number,
+                        &pr_result.pr_url,
+                        &merged.title,
+                        &merged.contribution_type.to_string(),
+                        &pr_result.branch_name,
+                        &pr_result.fork_full_name,
+                    )?;
+
+                    if let Err(e) = self.memory.record_outcome(
+                        &repo.full_name,
+                        pr_result.pr_number,
+                        &pr_result.pr_url,
+                        &merged.contribution_type.to_string(),
+                        "open",
+                        &pr_result.branch_name,
+                        0.0,
+                    ) {
+                        debug!("Outcome record failed (non-fatal): {}", e);
+                    }
+
+                    self.event_bus
+                        .emit(
+                            Event::new(EventType::PrCreated, "pipeline.process_repo")
+                                .with_data("pr_number", pr_result.pr_number)
+                                .with_data("url", pr_result.pr_url.as_str()),
+                        )
+                        .await;
+
+                    info!(
+                        pr = pr_result.pr_number,
+                        url = %pr_result.pr_url,
+                        files = merged.changes.len(),
+                        "✅ Multi-file PR created"
+                    );
+                }
+                Err(e) => {
+                    let msg = format!("PR creation failed: {}", e);
+                    warn!("{}", msg);
+                    result.errors.push(msg);
+                }
+            }
+        }
+
         Ok(result)
     }
 
+    /// Merge multiple contributions into a single multi-file contribution.
+    fn merge_contributions(contribs: Vec<Contribution>) -> Contribution {
+        merge_contributions_pub(contribs)
+    }
+
     /// Process a repo's issues (issue-solver mode).
+    ///
+    /// v5.5: Full end-to-end: fetch issues → solve → generate code → create PR with `Fixes #N`.
     async fn process_repo_issues(
         &self,
         repo: &Repository,
-        _dry_run: bool,
+        dry_run: bool,
         max_prs: usize,
         _ctx: &PipelineContext,
     ) -> Result<PipelineResult> {
         use crate::issues::solver::IssueSolver;
 
         let mut result = PipelineResult::default();
-        let solver = IssueSolver::new(self.llm, self.github);
-
-        // Fetch solvable issues and count them
-        let issues = solver.fetch_solvable_issues(repo, max_prs, 5).await;
         result.repos_analyzed = 1;
+
+        let solver = IssueSolver::new(self.llm, self.github);
+        let issues = solver.fetch_solvable_issues(repo, max_prs, 5).await;
         result.findings_total = issues.len();
-        result.contributions_generated = issues.len();
-        // TODO: actually solve them with solve_issue() in future sprint
+
+        if issues.is_empty() {
+            return Ok(result);
+        }
+
+        // Build repo context (shared across all issues)
+        let file_tree = self
+            .github
+            .get_file_tree(&repo.owner, &repo.name, None)
+            .await
+            .unwrap_or_default();
+
+        let repo_context = crate::core::models::RepoContext {
+            repo: repo.clone(),
+            file_tree,
+            readme_content: None,
+            contributing_guide: None,
+            relevant_files: HashMap::new(),
+            open_issues: Vec::new(),
+            coding_style: None,
+            symbol_map: HashMap::new(),
+            file_ranks: HashMap::new(),
+        };
+
+        let generator = ContributionGenerator::new(self.llm, &self.config.contribution);
+
+        for issue in &issues {
+            // Solve: issue → finding(s)
+            let findings = solver.solve_issue_deep(issue, repo, &repo_context).await;
+            if findings.is_empty() {
+                info!(issue = issue.number, "No actionable findings for issue");
+                continue;
+            }
+
+            // Fetch file contents for the specific files identified
+            let mut ctx_with_files = repo_context.clone();
+            for finding in &findings {
+                if !finding.file_path.is_empty()
+                    && !ctx_with_files.relevant_files.contains_key(&finding.file_path)
+                {
+                    if let Ok(content) = self
+                        .github
+                        .get_file_content(&repo.owner, &repo.name, &finding.file_path, None)
+                        .await
+                    {
+                        ctx_with_files
+                            .relevant_files
+                            .insert(finding.file_path.clone(), content);
+                    }
+                }
+            }
+
+            // Generate contributions for each finding, then merge
+            let mut valid = Vec::new();
+            for finding in &findings {
+                match generator.generate(finding, &ctx_with_files).await {
+                    Ok(Some(mut contribution)) => {
+                        // Inject `Fixes #N` into description
+                        contribution.description = format!(
+                            "Fixes #{}\n\n{}",
+                            issue.number, contribution.description
+                        );
+                        valid.push(contribution);
+                    }
+                    Ok(None) => {}
+                    Err(e) => {
+                        result.errors.push(format!(
+                            "Issue #{} generation error: {}",
+                            issue.number, e
+                        ));
+                    }
+                }
+            }
+
+            if valid.is_empty() {
+                continue;
+            }
+
+            let mut merged = Self::merge_contributions(valid);
+            // Ensure PR title references the issue
+            merged.title = format!("fix: resolve #{} — {}", issue.number, issue.title);
+            merged.commit_message = format!(
+                "fix: resolve #{} — {}\n\nFixes #{}",
+                issue.number, issue.title, issue.number
+            );
+            result.contributions_generated += 1;
+
+            if dry_run {
+                info!(
+                    issue = issue.number,
+                    title = %merged.title,
+                    files = merged.changes.len(),
+                    "🏃 [DRY RUN] Would create issue-solving PR"
+                );
+                continue;
+            }
+
+            let mut pr_mgr = PrManager::new(self.github);
+            match pr_mgr.create_pr(&merged, repo).await {
+                Ok(pr_result) => {
+                    result.prs_created += 1;
+
+                    self.memory.record_pr(
+                        &repo.full_name,
+                        pr_result.pr_number,
+                        &pr_result.pr_url,
+                        &merged.title,
+                        &merged.contribution_type.to_string(),
+                        &pr_result.branch_name,
+                        &pr_result.fork_full_name,
+                    )?;
+
+                    info!(
+                        issue = issue.number,
+                        pr = pr_result.pr_number,
+                        url = %pr_result.pr_url,
+                        "✅ Issue-solving PR created (Fixes #{})",
+                        issue.number
+                    );
+                }
+                Err(e) => {
+                    result
+                        .errors
+                        .push(format!("Issue #{} PR failed: {}", issue.number, e));
+                }
+            }
+        }
 
         Ok(result)
     }

@@ -419,7 +419,8 @@ impl Cli {
                     })
                     .collect();
 
-                let mut patrol = contribai::pr::patrol::PrPatrol::new(&github, llm.as_ref());
+                let mut patrol = contribai::pr::patrol::PrPatrol::new(&github, llm.as_ref())
+                    .with_memory(&memory);
                 let result = patrol
                     .patrol(&pr_values, dry_run)
                     .await
@@ -810,8 +811,145 @@ impl Cli {
                     );
                 }
 
-                if dry_run {
-                    println!("\n  {} Dry run — no PRs submitted.", "[DRY RUN]".yellow());
+                // v5.5: Actually solve issues and create PRs
+                println!();
+
+                let memory = create_memory(&config)?;
+                let file_tree = github
+                    .get_file_tree(&owner, &name, None)
+                    .await
+                    .unwrap_or_default();
+
+                let repo_context = contribai::core::models::RepoContext {
+                    repo: repo.clone(),
+                    file_tree,
+                    readme_content: None,
+                    contributing_guide: None,
+                    relevant_files: std::collections::HashMap::new(),
+                    open_issues: Vec::new(),
+                    coding_style: None,
+                    symbol_map: std::collections::HashMap::new(),
+                    file_ranks: std::collections::HashMap::new(),
+                };
+
+                let generator = contribai::generator::engine::ContributionGenerator::new(
+                    llm.as_ref(),
+                    &config.contribution,
+                );
+
+                let mut prs_created = 0u32;
+                for issue in &issues {
+                    println!(
+                        "  {} Solving issue #{}...",
+                        "🔧".bold(),
+                        issue.number.to_string().cyan()
+                    );
+
+                    // Solve: issue → findings
+                    let findings =
+                        solver.solve_issue_deep(issue, &repo, &repo_context).await;
+                    if findings.is_empty() {
+                        println!(
+                            "    {} No actionable findings",
+                            "⚠️".dimmed()
+                        );
+                        continue;
+                    }
+
+                    // Fetch file contents for identified files
+                    let mut ctx = repo_context.clone();
+                    for f in &findings {
+                        if !f.file_path.is_empty() && !ctx.relevant_files.contains_key(&f.file_path)
+                        {
+                            if let Ok(content) =
+                                github.get_file_content(&owner, &name, &f.file_path, None).await
+                            {
+                                ctx.relevant_files.insert(f.file_path.clone(), content);
+                            }
+                        }
+                    }
+
+                    // Generate code for each finding
+                    let mut valid = Vec::new();
+                    for finding in &findings {
+                        if let Ok(Some(mut contrib)) =
+                            generator.generate(finding, &ctx).await
+                        {
+                            contrib.description =
+                                format!("Fixes #{}\n\n{}", issue.number, contrib.description);
+                            valid.push(contrib);
+                        }
+                    }
+
+                    if valid.is_empty() {
+                        println!("    {} Generation failed", "❌".dimmed());
+                        continue;
+                    }
+
+                    // Merge into single PR
+                    let file_count = valid.iter().map(|c| c.changes.len()).sum::<usize>();
+                    let mut merged = contribai::orchestrator::pipeline::merge_contributions_pub(valid);
+                    merged.title =
+                        format!("fix: resolve #{} — {}", issue.number, issue.title);
+                    merged.commit_message = format!(
+                        "fix: resolve #{} — {}\n\nFixes #{}",
+                        issue.number, issue.title, issue.number
+                    );
+
+                    if dry_run {
+                        println!(
+                            "    {} Would create PR ({} files)",
+                            "[DRY RUN]".yellow(),
+                            file_count
+                        );
+                        continue;
+                    }
+
+                    let mut pr_mgr = contribai::pr::manager::PrManager::new(&github);
+                    match pr_mgr.create_pr(&merged, &repo).await {
+                        Ok(pr_result) => {
+                            prs_created += 1;
+                            let _ = memory.record_pr(
+                                &full_name,
+                                pr_result.pr_number,
+                                &pr_result.pr_url,
+                                &merged.title,
+                                &merged.contribution_type.to_string(),
+                                &pr_result.branch_name,
+                                &pr_result.fork_full_name,
+                            );
+                            println!(
+                                "    {} PR #{} created → {}",
+                                "✅".bold(),
+                                pr_result.pr_number.to_string().green(),
+                                pr_result.pr_url.dimmed()
+                            );
+                        }
+                        Err(e) => {
+                            println!(
+                                "    {} PR failed: {}",
+                                "❌".bold(),
+                                format!("{}", e).red()
+                            );
+                        }
+                    }
+                }
+
+                println!();
+                if prs_created > 0 {
+                    println!(
+                        "  {} {} PR(s) created from {} issues",
+                        "🎉".bold(),
+                        prs_created.to_string().green(),
+                        issues.len()
+                    );
+                } else if dry_run {
+                    println!("  {} Dry run — no PRs submitted.", "[DRY RUN]".yellow());
+                } else {
+                    println!(
+                        "  {} No PRs could be generated.",
+                        "⚠️".bold()
+                    );
                 }
                 Ok(())
             }
@@ -998,7 +1136,8 @@ impl Cli {
                             let mut patrol = contribai::pr::patrol::PrPatrol::new(
                                 &github,
                                 llm.as_ref(),
-                            );
+                            )
+                            .with_memory(&memory);
                             match memory.get_prs(Some("open"), 50) {
                                 Ok(prs) => {
                                     let pr_values: Vec<serde_json::Value> = prs

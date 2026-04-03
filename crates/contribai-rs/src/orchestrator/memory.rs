@@ -100,6 +100,20 @@ CREATE TABLE IF NOT EXISTS dream_meta (
     value       TEXT NOT NULL,
     updated_at  TEXT
 );
+
+CREATE TABLE IF NOT EXISTS pr_conversations (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    repo        TEXT NOT NULL,
+    pr_number   INTEGER NOT NULL,
+    role        TEXT NOT NULL,
+    author      TEXT NOT NULL,
+    body        TEXT NOT NULL,
+    comment_id  INTEGER DEFAULT 0,
+    is_inline   INTEGER DEFAULT 0,
+    file_path   TEXT,
+    created_at  TEXT,
+    UNIQUE(repo, pr_number, comment_id)
+);
 "#;
 
 /// Persistent memory backed by SQLite.
@@ -927,6 +941,107 @@ impl Memory {
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
             Err(e) => Err(ContribError::Config(format!("DB error: {}", e))),
         }
+    }
+
+    // ── PR Conversation Memory ────────────────────────────────────────────────
+
+    /// Record a single message in a PR conversation thread.
+    ///
+    /// `role` is "maintainer", "contribai", or "bot".
+    /// Duplicate comment_ids are silently ignored (UNIQUE constraint).
+    pub fn record_conversation(
+        &self,
+        repo: &str,
+        pr_number: i64,
+        role: &str,
+        author: &str,
+        body: &str,
+        comment_id: i64,
+        is_inline: bool,
+        file_path: Option<&str>,
+    ) -> Result<()> {
+        let db = self.lock_db()?;
+        let now = Utc::now().to_rfc3339();
+        db.execute(
+            "INSERT OR IGNORE INTO pr_conversations
+             (repo, pr_number, role, author, body, comment_id, is_inline, file_path, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            params![
+                repo,
+                pr_number,
+                role,
+                author,
+                body,
+                comment_id,
+                is_inline as i32,
+                file_path,
+                now
+            ],
+        )
+        .map_err(|e| ContribError::Config(format!("Failed to record conversation: {}", e)))?;
+        Ok(())
+    }
+
+    /// Get full conversation context for a PR, formatted for LLM prompts.
+    ///
+    /// Returns a chronologically-ordered thread like:
+    /// ```text
+    /// [maintainer @alice] Please use `unwrap_or_default()` instead.
+    /// [contribai @contribai-bot] ✅ Fixed — pushed update.
+    /// [maintainer @alice] Looks good, thanks!
+    /// ```
+    pub fn get_conversation_context(&self, repo: &str, pr_number: i64) -> Result<String> {
+        let db = self.lock_db()?;
+        let mut stmt = db
+            .prepare(
+                "SELECT role, author, body, file_path, is_inline
+                 FROM pr_conversations
+                 WHERE repo = ?1 AND pr_number = ?2
+                 ORDER BY id ASC",
+            )
+            .map_err(|e| ContribError::Config(format!("DB prepare: {}", e)))?;
+
+        let rows = stmt
+            .query_map(params![repo, pr_number], |row| {
+                let role: String = row.get(0)?;
+                let author: String = row.get(1)?;
+                let body: String = row.get(2)?;
+                let file_path: Option<String> = row.get(3)?;
+                let is_inline: bool = row.get::<_, i32>(4)? != 0;
+                Ok((role, author, body, file_path, is_inline))
+            })
+            .map_err(|e| ContribError::Config(format!("DB query: {}", e)))?;
+
+        let mut lines = Vec::new();
+        for row in rows {
+            let (role, author, body, file_path, is_inline) =
+                row.map_err(|e| ContribError::Config(format!("DB row: {}", e)))?;
+
+            let location = if is_inline {
+                file_path
+                    .map(|f| format!(" (on {})", f))
+                    .unwrap_or_default()
+            } else {
+                String::new()
+            };
+
+            lines.push(format!("[{} @{}{}] {}", role, author, location, body));
+        }
+
+        Ok(lines.join("\n"))
+    }
+
+    /// Count conversation messages for a PR.
+    pub fn get_conversation_count(&self, repo: &str, pr_number: i64) -> Result<usize> {
+        let db = self.lock_db()?;
+        let count: i64 = db
+            .query_row(
+                "SELECT COUNT(*) FROM pr_conversations WHERE repo = ?1 AND pr_number = ?2",
+                params![repo, pr_number],
+                |row| row.get(0),
+            )
+            .unwrap_or(0);
+        Ok(count as usize)
     }
 }
 

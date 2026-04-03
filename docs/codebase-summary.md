@@ -1,6 +1,6 @@
 # ContribAI Codebase Summary
 
-**Version:** 5.2.0 | **Language:** Rust | **Total LOC:** ~22,000 | **Files:** 63 .rs | **Tests:** 335
+**Version:** 5.4.2 | **Language:** Rust | **Total LOC:** ~26,000+ | **Files:** 65 .rs | **Tests:** 355
 
 ---
 
@@ -8,11 +8,11 @@
 
 ```
 crates/contribai-rs/src/
-├── core/              # Config, models, middleware, events, errors, quotas (9 files)
+├── core/              # Config, models, middleware, events, errors, quotas (10 files)
 ├── llm/               # Multi-provider LLM routing, context, formatter (7 files)
 ├── github/            # GitHub REST+GraphQL client, discovery, guidelines (4 files)
-├── analysis/          # Analyzers, skills, triage, AST intel, repo map (8 files)
-├── generator/         # Code fix generation, scorer, self-review, validation (6 files)
+├── analysis/          # Analyzers, skills, triage, AST intel, repo map (10 files)
+├── generator/         # Code fix generation, scorer, self-review, validation (8 files)
 ├── orchestrator/      # Pipeline, memory (SQLite), review gate (4 files)
 ├── pr/                # PR lifecycle, patrol monitoring (3 files)
 ├── issues/            # Issue-driven contributions (2 files)
@@ -20,7 +20,7 @@ crates/contribai-rs/src/
 ├── tools/             # Tool protocol (1 file)
 ├── mcp/               # MCP server (21 tools) + client (3 files)
 ├── web/               # Axum dashboard, API key auth, webhooks (1 file)
-├── cli/               # Clap CLI with 22 commands + ratatui TUI (3 files)
+├── cli/               # Clap CLI with 40+ commands + ratatui TUI (4 files)
 ├── scheduler/         # Tokio cron scheduler (1 file)
 ├── plugins/           # Trait-based plugin system (1 file)
 ├── templates/         # Contribution templates (1 file)
@@ -36,19 +36,19 @@ crates/contribai-rs/src/
 
 | Module | Purpose | Key Types/Functions | Files |
 |--------|---------|---------------------|-------|
-| **core** | Config, models, middleware, events, errors, quotas, profiles, retry | `ContribAIConfig`, `Repository`, `Finding`, `Contribution`, `Middleware`, `EventBus` | 9 |
-| **llm** | Multi-provider routing, token budgeting, formatting | `LlmProvider`, `TaskRouter`, `ContextManager`, `Formatter` | 7 |
+| **core** | Config, models, middleware, events, errors, quotas, profiles, retry, leaderboard | `ContribAIConfig`, `Repository`, `Finding`, `Contribution`, `Middleware`, `EventBus` | 10 |
+| **llm** | Multi-provider routing, token budgeting, formatting, task routing | `LlmProvider`, `TaskRouter`, `ContextManager`, `Formatter` | 7 |
 | **github** | Async GitHub client (REST+GraphQL), repo discovery, guideline parsing | `GitHubClient`, `RepoDiscovery`, `GuidelineParser` | 4 |
-| **analysis** | Multi-strategy analysis, progressive skills, triage, AST intel, repo map | `CodeAnalyzer`, `AnalysisSkill`, `TriageEngine`, `AstIntel`, `RepoMap` | 8 |
-| **generator** | LLM-powered fix generation, self-review, quality scoring, validation | `ContributionGenerator`, `QualityScorer`, `SelfReview` | 6 |
-| **orchestrator** | Pipeline coordination, SQLite memory, review gate | `Pipeline`, `Memory`, `ReviewGate` | 4 |
-| **pr** | PR creation, patrol monitoring | `PRManager`, `PRPatrol` | 3 |
+| **analysis** | Multi-strategy analysis, 17 skills, triage, AST intel, repo map, language rules | `CodeAnalyzer`, `AnalysisSkill`, `TriageEngine`, `AstIntel`, `RepoMap` | 10 |
+| **generator** | LLM-powered fix generation, self-review, quality scoring, risk classification, validation | `ContributionGenerator`, `QualityScorer`, `SelfReview`, `RiskClassifier` | 8 |
+| **orchestrator** | Pipeline coordination, SQLite memory, dream memory consolidation, review gate | `Pipeline`, `Memory`, `DreamMemory`, `ReviewGate` | 4 |
+| **pr** | PR creation, patrol monitoring, conversation-aware feedback | `PRManager`, `PRPatrol` | 3 |
 | **issues** | Issue discovery and solving | `IssueSolver` | 2 |
 | **agents** | Sub-agent registry with parallel execution | `SubAgentRegistry` | 2 |
 | **tools** | Tool protocol (MCP-inspired) | `Tool`, `ToolResult` | 1 |
 | **mcp** | MCP stdio server (21 tools) + client | `McpServer`, `StdioMcpClient` | 3 |
 | **web** | Axum REST API, API key auth, webhook receiver, dashboard | `run_server`, `AppState`, `verify_webhook_signature` | 1 |
-| **cli** | Clap-based CLI with 22 commands + ratatui TUI | `Cli`, `Commands`, `run_interactive_tui` | 3 |
+| **cli** | Clap-based CLI with 40+ commands + ratatui TUI | `Cli`, `Commands`, `run_interactive_tui` | 4 |
 | **scheduler** | Tokio-based cron automation | `ContribScheduler` | 1 |
 | **plugins** | Trait-based plugin system | `AnalyzerPlugin`, `GeneratorPlugin` | 1 |
 | **templates** | Contribution templates | `TemplateRegistry` | 1 |
@@ -108,10 +108,10 @@ crates/contribai-rs/src/
 ### CLI Entry Point
 - **File:** `crates/contribai-rs/src/cli/mod.rs`
 - **Struct:** `Cli` (clap derive)
-- **22 Commands:**
+- **40+ Commands** including:
   - `run` — Single full pipeline run
-  - `hunt` — Autonomous multi-round hunting
-  - `patrol` — Monitor open PRs
+  - `hunt` — Autonomous multi-round hunting with watchlist mode (v5.3.0)
+  - `patrol` — Monitor open PRs with conversation-aware feedback (v5.4.0)
   - `target` — Analyze specific repo
   - `analyze` — Dry-run analysis
   - `solve` — Solve issues in a repo
@@ -121,16 +121,17 @@ crates/contribai-rs/src/
   - `models` — Available LLM models
   - `templates` — Contribution templates
   - `profile` — Named config profiles
-  - `cleanup` — Remove stale forks
+  - `cleanup` — Remove stale forks with 404 auto-clean (v5.4.2)
   - `notify-test` — Real HTTP to Slack/Discord/Telegram
   - `system-status` — DB, rate limits, scheduler
-  - `interactive` — **ratatui TUI browser** (NEW in v5.2.0)
+  - `interactive` — ratatui TUI browser (4 tabs)
   - `web-server` — Start web dashboard
   - `schedule` — Start cron scheduler
   - `mcp-server` — MCP stdio server
   - `init` — Interactive setup wizard
   - `login` — Auth status
-  - `config-get/set/list` — YAML config editor
+  - `config-get/set/list` — YAML config editor with quoted list support (v5.4.2)
+  - (and 19+ additional subcommands)
 
 ### Web Entry Point
 - **File:** `crates/contribai-rs/src/web/mod.rs`
@@ -202,9 +203,9 @@ SchedulerStarted | WebhookReceived
 | **Database** | rusqlite (sync, wrapped in tokio::task::spawn_blocking) |
 | **CLI** | clap (derive macros) |
 | **Logging** | tracing, tracing-subscriber |
-| **Code Parsing** | tree-sitter (8 language grammars) |
+| **Code Parsing** | tree-sitter (13 language grammars) |
 | **Crypto** | hmac, sha2, hex (webhook verification) |
-| **Testing** | cargo test (built-in), 335 tests |
+| **Testing** | cargo test (built-in), 355 tests |
 | **Linting** | clippy |
 | **Formatting** | rustfmt |
 
@@ -214,12 +215,15 @@ SchedulerStarted | WebhookReceived
 
 | Feature | Module | Description |
 |---------|--------|-------------|
-| **Tree-sitter AST** | `analysis/ast_intel.rs` | Parse 8 languages (Rust, Python, JS, TS, Go, Java, C, C++) |
+| **Tree-sitter AST** | `analysis/ast_intel.rs` | Parse 13 languages (Rust, Python, JS, TS, Go, Java, C, C++, Ruby, PHP, Bash, YAML, JSON) |
 | **PageRank file ranking** | `analysis/repo_map.rs` | Rank file importance via import graph analysis |
 | **12-signal triage** | `analysis/triage.rs` | Score issues by recency, complexity, maintainer activity, etc. |
 | **3-tier context compression** | `analysis/compressor.rs` | Language-aware signature extraction for 5 languages |
 | **Language rules** | `analysis/language_rules.rs` | Per-language analysis rules and patterns |
 | **Leaderboard** | `core/leaderboard.rs` | Contribution tracking and ranking |
+| **Dream Memory** | `orchestrator/memory.rs` | Consolidate memory entries during idle periods (v5.4.0) |
+| **Risk Classification** | `generator/risk_classifier.rs` | Low/Medium/High risk auto-submit control (v5.4.0) |
+| **Watchlist Mode** | `discovery/watchlist.rs` | Targeted repo scanning with rotation (v5.3.0) |
 
 ---
 
@@ -301,7 +305,7 @@ mod tests {
 }
 ```
 
-**Test Coverage:** 335 tests across 63 source files
+**Test Coverage:** 355 tests across 65 source files
 **Test Command:** `cargo test` (all tests), `cargo test <module>` (specific)
 
 ---
@@ -318,5 +322,5 @@ mod tests {
 ## Document Metadata
 
 - **Created:** 2026-03-28
-- **Last Updated:** 2026-04-01
-- **Version:** 5.2.0 (Interactive TUI, real notify-test, full CLI parity)
+- **Last Updated:** 2026-04-04
+- **Version:** 5.4.2 (65 files, 355 tests, watchlist, dream memory, risk classification)

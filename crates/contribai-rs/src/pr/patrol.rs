@@ -10,6 +10,7 @@ use crate::core::error::Result;
 use crate::core::models::{FeedbackAction, FeedbackItem, PatrolResult};
 use crate::github::client::GitHubClient;
 use crate::llm::provider::LlmProvider;
+use crate::orchestrator::memory::Memory;
 
 /// Comments we already posted — skip these.
 const OUR_REPLY_MARKERS: &[&str] = &[
@@ -39,6 +40,7 @@ const REVIEW_BOT_LOGINS: &[&str] = &[
 pub struct PrPatrol<'a> {
     github: &'a GitHubClient,
     llm: &'a dyn LlmProvider,
+    memory: Option<&'a Memory>,
     user: Option<serde_json::Value>,
 }
 
@@ -47,7 +49,42 @@ impl<'a> PrPatrol<'a> {
         Self {
             github,
             llm,
+            memory: None,
             user: None,
+        }
+    }
+
+    /// Attach memory for conversation tracking.
+    pub fn with_memory(mut self, memory: &'a Memory) -> Self {
+        self.memory = Some(memory);
+        self
+    }
+
+    /// Record a feedback message in conversation memory (if memory is attached).
+    fn save_conversation(
+        &self,
+        repo: &str,
+        pr_number: i64,
+        role: &str,
+        author: &str,
+        body: &str,
+        comment_id: i64,
+        is_inline: bool,
+        file_path: Option<&str>,
+    ) {
+        if let Some(mem) = self.memory {
+            if let Err(e) = mem.record_conversation(
+                repo,
+                pr_number,
+                role,
+                author,
+                body,
+                comment_id,
+                is_inline,
+                file_path,
+            ) {
+                tracing::debug!("Failed to save conversation: {}", e);
+            }
         }
     }
 
@@ -143,9 +180,17 @@ impl<'a> PrPatrol<'a> {
             info!(pr = pr_number, "✅ No pending feedback");
             return Ok(());
         }
+        // v5.4: Load conversation history for context-aware classification
+        let full_repo = format!("{}/{}", owner, repo);
+        let conversation_context = self
+            .memory
+            .and_then(|m| m.get_conversation_context(&full_repo, pr_number).ok())
+            .unwrap_or_default();
 
-        // Classify via LLM
-        let classified = self.classify_feedback(&feedback).await;
+        // Classify via LLM (with conversation history)
+        let classified = self
+            .classify_feedback_with_context(&feedback, &conversation_context)
+            .await;
 
         let actionable: Vec<&FeedbackItem> = classified
             .iter()
@@ -238,8 +283,9 @@ impl<'a> PrPatrol<'a> {
                     continue;
                 }
 
+                let comment_id = c["id"].as_i64().unwrap_or(0);
                 feedback.push(FeedbackItem {
-                    comment_id: c["id"].as_i64().unwrap_or(0),
+                    comment_id,
                     author: login.to_string(),
                     body: body.to_string(),
                     action: FeedbackAction::CodeChange, // default; classified later
@@ -249,6 +295,12 @@ impl<'a> PrPatrol<'a> {
                     is_inline: false,
                     bot_context: None,
                 });
+
+                // v5.4: Save to conversation memory
+                let full_repo = format!("{}/{}", owner, repo);
+                self.save_conversation(
+                    &full_repo, pr_number, "maintainer", login, body, comment_id, false, None,
+                );
             }
         }
 
@@ -275,25 +327,38 @@ impl<'a> PrPatrol<'a> {
                     continue;
                 }
 
+                let comment_id = c["id"].as_i64().unwrap_or(0);
+                let file_path_str = c["path"].as_str();
                 feedback.push(FeedbackItem {
-                    comment_id: c["id"].as_i64().unwrap_or(0),
+                    comment_id,
                     author: login.to_string(),
                     body: body.to_string(),
                     action: FeedbackAction::CodeChange,
-                    file_path: c["path"].as_str().map(String::from),
+                    file_path: file_path_str.map(String::from),
                     line: c["line"].as_i64().or(c["original_line"].as_i64()),
                     diff_hunk: c["diff_hunk"].as_str().map(String::from),
                     is_inline: true,
                     bot_context: None,
                 });
+
+                // v5.4: Save to conversation memory
+                let full_repo = format!("{}/{}", owner, repo);
+                self.save_conversation(
+                    &full_repo, pr_number, "maintainer", login, body, comment_id, true,
+                    file_path_str,
+                );
             }
         }
 
         feedback
     }
 
-    /// Classify feedback items using LLM.
-    async fn classify_feedback(&self, feedback: &[FeedbackItem]) -> Vec<FeedbackItem> {
+    /// Classify feedback items with conversation history for context.
+    async fn classify_feedback_with_context(
+        &self,
+        feedback: &[FeedbackItem],
+        conversation_history: &str,
+    ) -> Vec<FeedbackItem> {
         if feedback.is_empty() {
             return vec![];
         }
@@ -318,6 +383,20 @@ impl<'a> PrPatrol<'a> {
             .collect::<Vec<_>>()
             .join("\n\n");
 
+        // v5.4: Include conversation history for context
+        let history_section = if conversation_history.is_empty() {
+            String::new()
+        } else {
+            format!(
+                "\n\nPREVIOUS CONVERSATION HISTORY (for context):\n{}\n\n\
+                 Use this history to understand:\n\
+                 - What was already discussed/fixed\n\
+                 - The maintainer's communication style\n\
+                 - Whether comments are follow-ups to earlier feedback\n",
+                conversation_history
+            )
+        };
+
         let prompt = format!(
             "Classify each review comment. Actions:\n\
              - CODE_CHANGE: Maintainer wants code mods\n\
@@ -326,9 +405,10 @@ impl<'a> PrPatrol<'a> {
              - APPROVE: Positive, no action\n\
              - REJECT: PR rejected entirely\n\
              - ALREADY_HANDLED: Reply to prev fix or bot\n\n\
+             {}\
              Comments:\n{}\n\n\
              Respond as JSON array: [{{\"comment_number\": 1, \"action\": \"CODE_CHANGE\"}}]",
-            comments_text
+            history_section, comments_text
         );
 
         match self
