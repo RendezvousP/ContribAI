@@ -141,7 +141,12 @@ pub fn gemini_3_1_flash_lite() -> ModelSpec {
         reasoning: 68,
         speed: 95,
         multimodal: 60,
-        best_for: vec![TaskType::Bulk, TaskType::Docs, TaskType::QuickFix, TaskType::Triage],
+        best_for: vec![
+            TaskType::Bulk,
+            TaskType::Docs,
+            TaskType::QuickFix,
+            TaskType::Triage,
+        ],
         description: "High-volume, cost-sensitive.".into(),
     }
 }

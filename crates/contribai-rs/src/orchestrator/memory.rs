@@ -910,8 +910,7 @@ impl Memory {
 
                 let preferred: Vec<String> =
                     serde_json::from_str(&preferred_str).unwrap_or_default();
-                let rejected: Vec<String> =
-                    serde_json::from_str(&rejected_str).unwrap_or_default();
+                let rejected: Vec<String> = serde_json::from_str(&rejected_str).unwrap_or_default();
 
                 Ok(RepoPreferences {
                     preferred_types: preferred,

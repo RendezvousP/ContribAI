@@ -150,7 +150,11 @@ impl<'a> CodeAnalyzer<'a> {
             let name = &self.config.enabled_analyzers[i];
             match result {
                 Ok(findings) => {
-                    info!(analyzer = name, findings = findings.len(), "Analyzer complete");
+                    info!(
+                        analyzer = name,
+                        findings = findings.len(),
+                        "Analyzer complete"
+                    );
                     all_findings.extend(findings);
                 }
                 Err(e) => warn!(analyzer = name, error = %e, "Analyzer failed"),

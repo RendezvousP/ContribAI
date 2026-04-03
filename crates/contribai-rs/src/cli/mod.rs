@@ -265,7 +265,11 @@ impl Cli {
                     println!("   {}: {}", "Stars".dimmed(), s.cyan());
                 }
                 if approve {
-                    println!("   {}: {}", "Approve".dimmed(), "HIGH risk enabled".yellow());
+                    println!(
+                        "   {}: {}",
+                        "Approve".dimmed(),
+                        "HIGH risk enabled".yellow()
+                    );
                 }
                 println!();
 
@@ -317,7 +321,11 @@ impl Cli {
                     println!("   {}: {}", "Language".dimmed(), lang.cyan());
                 }
                 if approve {
-                    println!("   {}: {}", "Approve".dimmed(), "HIGH risk enabled".yellow());
+                    println!(
+                        "   {}: {}",
+                        "Approve".dimmed(),
+                        "HIGH risk enabled".yellow()
+                    );
                 }
                 println!();
 
